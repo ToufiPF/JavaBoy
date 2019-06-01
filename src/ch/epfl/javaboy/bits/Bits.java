@@ -59,7 +59,7 @@ public final class Bits {
     public static int fullmask(int size) {
         if (!(0 <= size && size <= Integer.SIZE))
             throw new IllegalArgumentException();
-        return (1 << size) - 1;
+        return size == Integer.SIZE ? -1 : (1 << size) - 1;
     }
 
     /**
@@ -146,9 +146,10 @@ public final class Bits {
      * @return (int) the rotated vector
      */
     public static int rotate(int size, int bits, int distance) {
+        if (size <= 0)
+            throw new IllegalArgumentException();
         int d = Math.floorMod(distance, size);
-        
-        return 0;
+        return fullmask(size) & ((bits << d) | (bits >>> size - d));
     }
     
     /**
