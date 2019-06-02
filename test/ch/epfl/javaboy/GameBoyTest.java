@@ -1,6 +1,6 @@
 // Gameboj stage 2
 
-package ch.epfl.gameboj;
+package ch.epfl.javaboy;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 

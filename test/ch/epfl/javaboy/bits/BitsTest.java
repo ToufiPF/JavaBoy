@@ -1,6 +1,6 @@
 // Gameboj stage 1
 
-package ch.epfl.gameboj.bits;
+package ch.epfl.javaboy.bits;
 
 import static ch.epfl.test.TestRandomizer.RANDOM_ITERATIONS;
 import static ch.epfl.test.TestRandomizer.newRandom;

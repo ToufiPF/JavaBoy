@@ -1,6 +1,6 @@
 // Gameboj stage 1
 
-package ch.epfl.gameboj.component.memory;
+package ch.epfl.javaboy.component.memory;
 
 import static ch.epfl.test.TestRandomizer.RANDOM_ITERATIONS;
 import static ch.epfl.test.TestRandomizer.newRandom;
@@ -12,8 +12,8 @@ import java.util.Random;
 
 import org.junit.jupiter.api.Test;
 
-import ch.epfl.gameboj.component.ComponentTest;
 import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.ComponentTest;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
 

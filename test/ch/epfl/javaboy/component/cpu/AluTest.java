@@ -1,6 +1,6 @@
 // Gameboj stage 2
 
-package ch.epfl.gameboj.component.cpu;
+package ch.epfl.javaboy.component.cpu;
 
 import static ch.epfl.test.TestRandomizer.RANDOM_ITERATIONS;
 import static ch.epfl.test.TestRandomizer.newRandom;
