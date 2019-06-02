@@ -1,6 +1,6 @@
 package ch.epfl.javaboy;
 
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -13,7 +13,7 @@ import ch.epfl.javaboy.component.Component;
  * @author Toufi
  */
 public final class Bus {
-    private final List<Component> attached = new ArrayList<>();
+    private final List<Component> attached = new LinkedList<>();
     
     /**
      * Attaches the given component to the bus

@@ -349,6 +349,6 @@ public final class Alu {
     }
 
     private static int packValueZNHC(int value, int maskZNHC) {
-        return value << VALUE_START | maskZNHC << FLAGS_START;
+        return (value << VALUE_START) | (maskZNHC << FLAGS_START);
     }
 }
