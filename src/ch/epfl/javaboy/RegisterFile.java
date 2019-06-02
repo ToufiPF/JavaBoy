@@ -13,7 +13,7 @@ import ch.epfl.javaboy.bits.Bits;
  */
 public class RegisterFile<E extends Register> {
     
-    private final byte[] registerFile;
+    private final int[] registerFile;
     
     /**
      * Constructs a new RegisterFile,
@@ -22,7 +22,7 @@ public class RegisterFile<E extends Register> {
      * @param allRegs (E[]) array of the enum's values
      */
     public RegisterFile(E[] allRegs) {
-        registerFile = new byte[allRegs.length];
+        registerFile = new int[allRegs.length];
     }
     
     /**
@@ -38,11 +38,11 @@ public class RegisterFile<E extends Register> {
     /**
      * Sets the value of the given register
      * @param reg (E) register to set
-     * @param newValue (boolean) value to set
+     * @param newValue (int) value to set
      */
     public void set(E reg, int newValue) {
         Preconditions.checkBits8(newValue);
-        registerFile[reg.index()] = (byte) newValue;
+        registerFile[reg.index()] = newValue;
     }
     
     /**
