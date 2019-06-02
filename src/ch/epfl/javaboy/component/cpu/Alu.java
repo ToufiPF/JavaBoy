@@ -18,15 +18,15 @@ public final class Alu {
      * Represents the flags that an ALU can
      * send :
      *  - first 4 are unused,
-     *  - Z = true if result == 0,
-     *  - N = true if operation == substraction
-     *  - H = true if there is a half_carry
      *  - C = true if there is a end_carry
+     *  - H = true if there is a half_carry
+     *  - N = true if operation == substraction
+     *  - Z = true if result == 0
      * @author Toufi
      */
     public static enum Flag implements Bit {
         UNUSED_0, UNUSED_1, UNUSED_2, UNUSED_3,
-        Z, N, H, C;
+        C, H, N, Z;
     }
 
     /** RotDir
@@ -96,12 +96,9 @@ public final class Alu {
         Preconditions.checkBits8(right8);
         int sum = left8 + right8 + (carry0 ? 1 : 0);
         sum &= Bits.fullmask(Byte.SIZE);
-        boolean z = sum == 0;
-        boolean n = false;
-        boolean h = (left8 & Bits.fullmask(4))
-                + (right8 & Bits.fullmask(4) + (carry0 ? 1 : 0)) > 0xF;
-                boolean c = left8 + right8 + (carry0 ? 1 : 0) > 0xFF;
-                return packValueZNHC(sum, z, n, h, c);
+        boolean h = (left8 & Bits.fullmask(4)) + (right8 & Bits.fullmask(4)) + (carry0 ? 1 : 0) > 0xF;
+        boolean c = left8 + right8 + (carry0 ? 1 : 0) > 0xFF;
+        return packValueZNHC(sum, sum == 0, false, h, c);
     }
 
     /**
@@ -130,9 +127,9 @@ public final class Alu {
         int packedSumLow = add(left16 & Bits.fullmask(Byte.SIZE), right16 & Bits.fullmask(Byte.SIZE));
         int packedSumHigh = add(Bits.extract(left16, Byte.SIZE, Byte.SIZE),
                 Bits.extract(right16, Byte.SIZE, Byte.SIZE), (packedSumLow & Flag.C.mask()) != 0);
-        int unpackedSum = unpackValue(packedSumHigh) << Byte.SIZE | unpackValue(packedSumLow);
-        boolean h = (packedSumLow & Flag.H.mask() ) != 0;
-        boolean c = (packedSumLow & Flag.C.mask() ) != 0;
+        int unpackedSum = (unpackValue(packedSumHigh) << Byte.SIZE) | unpackValue(packedSumLow);
+        boolean h = (packedSumLow & Flag.H.mask()) != 0;
+        boolean c = (packedSumLow & Flag.C.mask()) != 0;
         return packValueZNHC(unpackedSum, false, false, h, c);
     }
 
@@ -150,9 +147,9 @@ public final class Alu {
         int packedSumLow = add(left16 & Bits.fullmask(Byte.SIZE), right16 & Bits.fullmask(Byte.SIZE));
         int packedSumHigh = add(Bits.extract(left16, Byte.SIZE, Byte.SIZE),
                 Bits.extract(right16, Byte.SIZE, Byte.SIZE), (packedSumLow & Flag.C.mask()) != 0);
-        int unpackedSum = unpackValue(packedSumHigh) << Byte.SIZE | unpackValue(packedSumLow);
-        boolean h = (packedSumHigh & Flag.H.mask() ) != 0;
-        boolean c = (packedSumHigh & Flag.C.mask() ) != 0;
+        int unpackedSum = (unpackValue(packedSumHigh) << Byte.SIZE) | unpackValue(packedSumLow);
+        boolean h = (packedSumHigh & Flag.H.mask()) != 0;
+        boolean c = (packedSumHigh & Flag.C.mask()) != 0;
         return packValueZNHC(unpackedSum, false, false, h, c);
     }
 
@@ -170,9 +167,10 @@ public final class Alu {
         Preconditions.checkBits8(left8);
         Preconditions.checkBits8(right8);
 
-        int sub = left8 - right8 - (borrow0 ? 1 : 0);
+        int sub = left8 - (right8 + (borrow0 ? 1 : 0));
+        sub &= Bits.fullmask(Byte.SIZE);
         boolean h = (left8 & Bits.fullmask(4))
-                < (right8 & Bits.fullmask(4) + (borrow0 ? 1 : 0));
+                < (right8 & Bits.fullmask(4)) + (borrow0 ? 1 : 0);
         boolean c = left8 < right8 + (borrow0 ? 1 : 0);
         return packValueZNHC(sub, sub == 0, true, h, c);
     }
@@ -201,12 +199,13 @@ public final class Alu {
     public static int bcdAdjust(int notDCBVal, boolean n, boolean h, boolean c) {
         Preconditions.checkBits8(notDCBVal);
         boolean fixL = h | (!n && ((notDCBVal & Bits.fullmask(4)) > 9));
-        boolean fixH = c | (!n && (notDCBVal > 99));
-        int fix = 60 * (fixH ? 1 : 0) + 6 * (fixL ? 1 : 0);
+        boolean fixH = c | (!n && (notDCBVal > 0x99));
+        int fix = 0x60 * (fixH ? 1 : 0) + 0x06 * (fixL ? 1 : 0);
         int vAdjusted = n ? notDCBVal - fix : notDCBVal + fix;
+        vAdjusted &= Bits.fullmask(Byte.SIZE);
         return packValueZNHC(vAdjusted, vAdjusted == 0, n, false, fixH);
     }
-    
+
     /**
      * Applies bitwise and operation to the given vectors
      * Flags : Z010
@@ -215,10 +214,12 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int and(int l, int r) {
+        Preconditions.checkBits8(l);
+        Preconditions.checkBits8(r);
         int res = l & r;
         return packValueZNHC(res, res == 0, false, true, false);
     }
-    
+
     /**
      * Applies bitwise or operation to the given vectors
      * Flags : Z000
@@ -227,6 +228,8 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int or(int l, int r) {
+        Preconditions.checkBits8(l);
+        Preconditions.checkBits8(r);
         int res = l | r;
         return packValueZNHC(res, res == 0, false, false, false);
     }
@@ -239,6 +242,8 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int xor(int l, int r) {
+        Preconditions.checkBits8(l);
+        Preconditions.checkBits8(r);
         int res = l ^ r;
         return packValueZNHC(res, res == 0, false, false, false);
     }
@@ -251,8 +256,9 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int shiftLeft(int v) {
-        int res = (v & Bits.fullmask(Byte.SIZE - 1)) << 1;
-        return packValueZNHC(res, res == 0, false, false, (v & Flag.C.mask()) != 0);
+        Preconditions.checkBits8(v);
+        int res = (v << 1) & Bits.fullmask(Byte.SIZE);
+        return packValueZNHC(res, res == 0, false, false, (v & 0b1000_0000) != 0);
     }
 
     /**
@@ -264,8 +270,9 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int shiftRightA(int v) {
-        int res = (v & Bits.fullmask(Byte.SIZE - 1)) >> 1;
-        return packValueZNHC(res, res == 0, false, false, (v & 1) != 0);
+        Preconditions.checkBits8(v);
+        int res = (Bits.signExtend8(v) >>> 1) & Bits.fullmask(Byte.SIZE);
+        return packValueZNHC(res, res == 0, false, false, (v & 0b0000_0001) != 0);
     }
 
     /**
@@ -277,10 +284,11 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int shiftRightL(int v) {
-        int res = (v & Bits.fullmask(Byte.SIZE - 1)) >>> 1;
-        return packValueZNHC(res, res == 0, false, false, (v & 1) != 0);
+        Preconditions.checkBits8(v);
+        int res = v >>> 1;
+        return packValueZNHC(res, res == 0, false, false, (v & 0b0000_0001) != 0);
     }
-    
+
     /**
      * Rotates the given vector in the
      * given direction
@@ -290,6 +298,7 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int rotate(RotDir d, int v) {
+        Preconditions.checkBits8(v);
         int res;
         boolean c;
         if (d == RotDir.LEFT) {
@@ -312,11 +321,19 @@ public final class Alu {
      * @return (int) result and flags
      */
     public static int rotate(RotDir d, int v, boolean c) {
-        int bits9 = (v << 1) | (c ? 1 : 0);
+        Preconditions.checkBits8(v);
+        int bits9 = (c ? 0x100 : 0) | v;
+        
+        if (d == RotDir.LEFT) 
+            bits9 = Bits.rotate(9, bits9, 1);
+        else
+            bits9 = Bits.rotate(9, bits9, -1);
+        
         int res = bits9 & Bits.fullmask(Byte.SIZE);
-        return packValueZNHC(res, res == 0, false, false, (bits9 & Bits.mask(Byte.SIZE)) != 0);
+        boolean c2 = (bits9 & Bits.mask(Byte.SIZE)) != 0;
+        return packValueZNHC(res, res == 0, false, false, c2);
     }
-    
+
     /**
      * Swaps the position of the 4 LSBs
      * with the 4 MSBs
@@ -325,10 +342,11 @@ public final class Alu {
      * @return (int) swapped vector and flags
      */
     public static int swap(int v) {
+        Preconditions.checkBits8(v);
         int res = ((v << 4) | (v >> 4)) & Bits.fullmask(Byte.SIZE);
         return packValueZNHC(res, res == 0, false, false, false);
     }
-    
+
     /**
      * Return 1 in the position of flag z
      * if the bit at the given index == 0
@@ -339,10 +357,11 @@ public final class Alu {
      */
     public static int testBit(int v, int bitIndex) {
         Objects.checkIndex(bitIndex, Byte.SIZE);
+        Preconditions.checkBits8(v);
         boolean z = (v & Bits.mask(bitIndex)) == 0;
         return packValueZNHC(0, z, false, true, false);
     }
-
+    
     private static int packValueZNHC(int value, 
             boolean z, boolean n, boolean h, boolean c) {
         return packValueZNHC(value, maskZNHC(z, n, h, c));
