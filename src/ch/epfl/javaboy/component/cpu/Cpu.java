@@ -16,8 +16,17 @@ import ch.epfl.javaboy.component.cpu.Alu.Flag;
 import ch.epfl.javaboy.component.cpu.Alu.RotDir;
 import ch.epfl.javaboy.component.memory.Ram;
 
+/**
+ * Represents a Cpu for a GameBoy.
+ * Implements Component and Clocked
+ * @author Toufi
+ */
 public final class Cpu implements Component, Clocked {
-
+    
+    /**
+     * Possible interruptions
+     * @author Toufi
+     */
     public static enum Interrupt implements Bit {
         VBLANK, LCD_STAT, TIMER, SERIAL, JOYPAD
     }
@@ -29,12 +38,11 @@ public final class Cpu implements Component, Clocked {
     private static enum Reg16 implements Register {
         AF, BC, DE, HL;
     }
-    private static enum FlagSrc implements Bit {
-        FALSE, TRUE, ALU, CPU;
-    }
-
     private enum RegI implements Register {
         IE, IF
+    }
+    private static enum FlagSrc implements Bit {
+        FALSE, TRUE, ALU, CPU;
     }
 
     private static final Opcode[] DIRECT_OPCODE_TABLE =
@@ -68,7 +76,10 @@ public final class Cpu implements Component, Clocked {
     private final RegisterFile<RegI> interruptionReg;
     private Bus bus;
     private Ram highRam;
-
+    
+    /**
+     * Constructs a new Cpu
+     */
     public Cpu() {
         nextNonIdleCycle = 0;
         PC = 0;
@@ -112,7 +123,7 @@ public final class Cpu implements Component, Clocked {
 
             nextNonIdleCycle += INTERRUPTION_MANAGEMENT_DURATION;
     }
-
+    
     @Override
     public int read(int address) {
         Preconditions.checkBits16(address);
@@ -146,7 +157,12 @@ public final class Cpu implements Component, Clocked {
         this.bus = bus;
         Component.super.attachTo(bus);
     }
-
+    
+    /**
+     * Request an interruption
+     * (set the corresponding bit in IF to true)
+     * @param i (Interrupt) interruption to raise
+     */
     public void requestInterrupt(Interrupt i) {
         interruptionReg.setBit(RegI.IF, i, true);
     }

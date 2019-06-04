@@ -17,7 +17,12 @@ public final class GameBoy {
     private final RamController echoRamCtrl;
 
     private long simulatedCycles;
-
+    
+    /**
+     * Constructs a new GameBoy with
+     * the given cartridge
+     * @param cardridge
+     */
     public GameBoy(Object cardridge) {
         serial = new Bus();
         cpu = new Cpu();
@@ -30,15 +35,30 @@ public final class GameBoy {
 
         simulatedCycles = 0;
     }
-
+    
+    /**
+     * Returns the bus
+     * @return (Bus) bus of the GameBoy
+     */
     public Bus bus() {
         return serial;
     }
-
+    
+    /**
+     * Returns the cpu
+     * @return (Cpu) cpu of the GameBoy
+     */
     public Cpu cpu() {
         return cpu;
     }
-
+    
+    /**
+     * Runs all clocked components until
+     * the given cycle (excluded)
+     * @param cycle (long) limit cycle
+     * @throws IllegalArgumentException
+     * if the given cycle has already been simulated
+     */
     public void runUntil(long cycle) {
         if (cycle < simulatedCycles)
             throw new IllegalArgumentException("Cycle already simulated.");
@@ -47,7 +67,11 @@ public final class GameBoy {
             ++simulatedCycles;
         }
     }
-
+    
+    /**
+     * Returns the number of simulated cycles
+     * @return (long) cycles
+     */
     public long cycles() {
         return simulatedCycles;
     }
