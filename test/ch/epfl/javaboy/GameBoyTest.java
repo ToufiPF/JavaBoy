@@ -13,7 +13,9 @@ class GameBoyTest {
     @Test
     void workRamIsProperlyMapped() {
         Bus b = new GameBoy(null).bus();
-        for (int a = 0; a <= 0xFFFF; ++a) {
+        for (int a = 0; a < AddressMap.HIGH_RAM_START; ++a) {
+            if (a == AddressMap.REG_IE || a == AddressMap.REG_IF)
+                continue;
             boolean inWorkRamOrEcho = (0xC000 <= a && a < 0xFE00);
             assertEquals(inWorkRamOrEcho ? 0 : 0xFF, b.read(a), String.format("at address 0x%04x", a));
         }

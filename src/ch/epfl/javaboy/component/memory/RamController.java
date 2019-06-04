@@ -62,11 +62,13 @@ public final class RamController implements Component {
     
     @Override
     public void write(int address, int value) {
+        Preconditions.checkBits8(value);
         if (isInBounds(address))
             ram.write(address - start, value);
     }
     
     private boolean isInBounds(int address) {
+        Preconditions.checkBits16(address);
         return start <= address && address < end;
     }
 }
