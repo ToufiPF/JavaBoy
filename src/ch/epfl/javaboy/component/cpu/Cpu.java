@@ -185,24 +185,20 @@ public final class Cpu implements Component, Clocked {
             break;
             // Load instructions : 
         case LD_R8_HLR: {
-            Reg r = extractReg(opcode, 3);
-            reg8bits.set(r, read8AtHL());
+            reg8bits.set(extractReg(opcode, 3), read8AtHL());
         } break;
         case LD_A_HLRU: {
             reg8bits.set(Reg.A, read8AtHL());
-            int inc = extractHLIncrement(opcode);
-            setReg16(Reg16.HL, getReg16(Reg16.HL) + inc);
+            setReg16(Reg16.HL, Bits.clip(Byte.SIZE * 2, getReg16(Reg16.HL) + extractHLIncrement(opcode)));
         } break;
         case LD_A_N8R: {
-            int n8 = read8AfterOpcode();
-            reg8bits.set(Reg.A, read8(AddressMap.REGS_START + n8));
+            reg8bits.set(Reg.A, read8(AddressMap.REGS_START + read8AfterOpcode()));
         } break;
         case LD_A_CR: {
             reg8bits.set(Reg.A, read8(AddressMap.REGS_START + reg8bits.get(Reg.C)));
         } break;
         case LD_A_N16R: {
-            int n16 = read16AfterOpcode();
-            reg8bits.set(Reg.A, read8(n16));
+            reg8bits.set(Reg.A, read8(read16AfterOpcode()));
         } break;
         case LD_A_BCR: {
             reg8bits.set(Reg.A, read8(getReg16(Reg16.BC)));
@@ -211,57 +207,45 @@ public final class Cpu implements Component, Clocked {
             reg8bits.set(Reg.A, read8(getReg16(Reg16.DE)));
         } break;
         case LD_R8_N8: {
-            int n8 = read8AfterOpcode();
-            Reg r = extractReg(opcode, 3);
-            reg8bits.set(r, n8);
+            reg8bits.set(extractReg(opcode, 3), read8AfterOpcode());
         } break;
         case LD_R16SP_N16: {
-            int n16 = read16AfterOpcode();
-            Reg16 r = extractReg16(opcode);
-            setReg16SP(r, n16);
+            setReg16SP(extractReg16(opcode), read16AfterOpcode());
         } break;
         case POP_R16: {
-            Reg16 r = extractReg16(opcode);
-            setReg16(r, pop16());
+            setReg16(extractReg16(opcode), pop16());
         } break;
         // Store instructions :
         case LD_HLR_R8: {
-            Reg r = extractReg(opcode, 0);
-            write8AtHL(reg8bits.get(r));
+            write8AtHL(reg8bits.get(extractReg(opcode, 0)));
         } break;
         case LD_HLRU_A: {
             write8AtHL(reg8bits.get(Reg.A));
-            int inc = extractHLIncrement(opcode);
-            setReg16(Reg16.HL, getReg16(Reg16.HL) + inc);
+            setReg16(Reg16.HL, Bits.clip(Byte.SIZE * 2, getReg16(Reg16.HL) + extractHLIncrement(opcode)));
         } break;
         case LD_N8R_A: {
-            int n8 = read8AfterOpcode();
-            write8(AddressMap.REGS_START + n8, reg8bits.get(Reg.A));
+            write8(AddressMap.REGS_START + read8AfterOpcode(), reg8bits.get(Reg.A));
         } break;
         case LD_CR_A: {
             write8(AddressMap.REGS_START + reg8bits.get(Reg.C), reg8bits.get(Reg.A));
         } break;
         case LD_N16R_A: {
-            int n16 = read16AfterOpcode();
-            write8(n16, reg8bits.get(Reg.A));
+            write8(read16AfterOpcode(), reg8bits.get(Reg.A));
         } break;
         case LD_BCR_A: {
-            write16(getReg16(Reg16.BC), reg8bits.get(Reg.A));
+            write8(getReg16(Reg16.BC), reg8bits.get(Reg.A));
         } break;
         case LD_DER_A: {
-            write16(getReg16(Reg16.DE), reg8bits.get(Reg.A));
+            write8(getReg16(Reg16.DE), reg8bits.get(Reg.A));
         } break;
         case LD_HLR_N8: {
-            int n8 = read8AfterOpcode();
-            write16(getReg16(Reg16.HL), n8);
+            write8(getReg16(Reg16.HL), read8AfterOpcode());
         } break;
         case LD_N16R_SP: {
-            int n16 = read16AfterOpcode();
-            write16(n16, SP);
+            write16(read16AfterOpcode(), SP);
         } break;
         case PUSH_R16: {
-            Reg16 r = extractReg16(opcode);
-            push16(getReg16(r));
+            push16(getReg16(extractReg16(opcode)));
         } break;
         // Move Instructions :
         case LD_R8_R8: { 
@@ -275,22 +259,19 @@ public final class Cpu implements Component, Clocked {
 
         // Add Instructions :
         case ADD_A_N8: {
-            int left = reg8bits.get(Reg.A);
             int right = read8AfterOpcode();
             boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setRegAndFlags(Reg.A, Alu.add(left, right, carry));
+            setRegAndFlags(Reg.A, Alu.add(reg8bits.get(Reg.A), right, carry));
         } break;
         case ADD_A_R8: {
-            int left = reg8bits.get(Reg.A);
             int right = reg8bits.get(extractReg(opcode, 0));
             boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setRegAndFlags(Reg.A, Alu.add(left, right, carry));
+            setRegAndFlags(Reg.A, Alu.add(reg8bits.get(Reg.A), right, carry));
         } break;
         case ADD_A_HLR: {
-            int left = reg8bits.get(Reg.A);
             int right = read8(getReg16(Reg16.HL));
             boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setRegAndFlags(Reg.A, Alu.add(left, right, carry));
+            setRegAndFlags(Reg.A, Alu.add(reg8bits.get(Reg.A), right, carry));
         } break;
         case INC_R8: {
             Reg r = extractReg(opcode, 3);
