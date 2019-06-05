@@ -2,7 +2,6 @@ package ch.epfl.javaboy;
 
 import java.util.Objects;
 
-import ch.epfl.javaboy.component.DebugPrintSerial;
 import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
@@ -25,8 +24,6 @@ public final class GameBoy {
     private final Ram workRam;
     private final RamController workRamCtrl;
     private final RamController echoRamCtrl;
-    
-    private final DebugPrintSerial printSerial;
 
     private long simulatedCycles;
     
@@ -52,9 +49,6 @@ public final class GameBoy {
         workRamCtrl.attachTo(bus);
         echoRamCtrl = new RamController(workRam, AddressMap.ECHO_RAM_START, AddressMap.ECHO_RAM_END);
         echoRamCtrl.attachTo(bus);
-        
-        printSerial = new DebugPrintSerial();
-        printSerial.attachTo(bus);
         
         simulatedCycles = 0;
     }

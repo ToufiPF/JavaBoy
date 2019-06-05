@@ -1,6 +1,6 @@
 package ch.epfl.javaboy.component;
 
-public class DebugPrintSerial implements Component {
+public class DebugPrinter implements Component {
     @Override
     public int read(int address) {
         return NO_DATA;
