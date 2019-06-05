@@ -1,6 +1,12 @@
 package ch.epfl.javaboy;
 
+import java.util.Objects;
+
+import ch.epfl.javaboy.component.DebugPrintSerial;
+import ch.epfl.javaboy.component.Timer;
+import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
+import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
 
@@ -10,11 +16,17 @@ import ch.epfl.javaboy.component.memory.RamController;
  * @author Toufi
  */
 public final class GameBoy {
-    private final Bus serial;
+    private final Bus bus;
     private final Cpu cpu;
+    private final Timer timer;
+    
+    private final BootRomController bootRomCtrl;
+    
     private final Ram workRam;
     private final RamController workRamCtrl;
     private final RamController echoRamCtrl;
+    
+    private final DebugPrintSerial printSerial;
 
     private long simulatedCycles;
     
@@ -23,16 +35,27 @@ public final class GameBoy {
      * the given cartridge
      * @param cardridge
      */
-    public GameBoy(Object cardridge) {
-        serial = new Bus();
+    public GameBoy(Cartridge cartridge) {
+        Objects.requireNonNull(cartridge);
+        bus = new Bus();
         cpu = new Cpu();
-        cpu.attachTo(serial);
+        cpu.attachTo(bus);
+        
+        timer = new Timer(cpu);
+        timer.attachTo(bus);
+        
+        bootRomCtrl = new BootRomController(cartridge);
+        bootRomCtrl.attachTo(bus);
+        
         workRam = new Ram(AddressMap.WORK_RAM_SIZE);
         workRamCtrl = new RamController(workRam, AddressMap.WORK_RAM_START, AddressMap.WORK_RAM_END);
-        workRamCtrl.attachTo(serial);
+        workRamCtrl.attachTo(bus);
         echoRamCtrl = new RamController(workRam, AddressMap.ECHO_RAM_START, AddressMap.ECHO_RAM_END);
-        echoRamCtrl.attachTo(serial);
-
+        echoRamCtrl.attachTo(bus);
+        
+        printSerial = new DebugPrintSerial();
+        printSerial.attachTo(bus);
+        
         simulatedCycles = 0;
     }
     
@@ -41,7 +64,7 @@ public final class GameBoy {
      * @return (Bus) bus of the GameBoy
      */
     public Bus bus() {
-        return serial;
+        return bus;
     }
     
     /**
@@ -50,6 +73,10 @@ public final class GameBoy {
      */
     public Cpu cpu() {
         return cpu;
+    }
+    
+    public Timer timer() {
+        return timer;
     }
     
     /**
@@ -63,6 +90,7 @@ public final class GameBoy {
         if (cycle < simulatedCycles)
             throw new IllegalArgumentException("Cycle already simulated.");
         while (simulatedCycles < cycle) {
+            timer.cycle(simulatedCycles);
             cpu.cycle(simulatedCycles);
             ++simulatedCycles;
         }
