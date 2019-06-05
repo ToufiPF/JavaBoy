@@ -2,6 +2,7 @@ package ch.epfl.javaboy.component.cartridge;
 
 import java.util.Objects;
 
+import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Rom;
 
@@ -20,6 +21,7 @@ public final class MBC0 implements Component {
     
     @Override
     public int read(int address) {
+        Preconditions.checkBits16(address);
         if (0 <= address && address < MBC0_SIZE)
             return rom.read(address);
         return NO_DATA;

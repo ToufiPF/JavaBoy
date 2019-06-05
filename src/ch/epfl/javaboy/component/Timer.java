@@ -45,6 +45,8 @@ public final class Timer implements Component, Clocked {
     
     @Override
     public int read(int address) {
+        Preconditions.checkBits16(address);
+        
         if (address == AddressMap.REG_DIV)
             return Bits.extract(mainCounter, Byte.SIZE, Byte.SIZE);
         else if (address == AddressMap.REG_TIMA)
@@ -64,7 +66,7 @@ public final class Timer implements Component, Clocked {
 
         if (address == AddressMap.REG_DIV) {
             boolean prev = computeState();
-            mainCounter = value << Byte.SIZE;
+            mainCounter = 0;
             incrementIfFallingEdge(prev, computeState());
             
         } else if (address == AddressMap.REG_TIMA) {
