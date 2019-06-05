@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 
 import ch.epfl.javaboy.component.Component;
-import ch.epfl.javaboy.component.DebugPrinter;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
 

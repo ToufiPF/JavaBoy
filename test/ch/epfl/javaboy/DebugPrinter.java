@@ -1,4 +1,6 @@
-package ch.epfl.javaboy.component;
+package ch.epfl.javaboy;
+
+import ch.epfl.javaboy.component.Component;
 
 public class DebugPrinter implements Component {
     @Override
