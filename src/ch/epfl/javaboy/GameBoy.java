@@ -69,6 +69,10 @@ public final class GameBoy {
         return cpu;
     }
     
+    /**
+     * Returns the timer
+     * @return (Timer) timer of the GameBoy
+     */
     public Timer timer() {
         return timer;
     }

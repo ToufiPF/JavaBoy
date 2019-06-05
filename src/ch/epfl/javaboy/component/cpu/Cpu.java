@@ -354,22 +354,16 @@ public final class Cpu implements Component, Clocked {
             combineAluFlags(res, FlagSrc.ALU, FlagSrc.TRUE, FlagSrc.ALU, FlagSrc.CPU);
         } break;
         case CP_A_N8: {
-            int left = reg8bits.get(Reg.A);
             int right = read8AfterOpcode();
-            boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setFlagsFromAlu(Alu.sub(left, right, carry));
+            setFlagsFromAlu(Alu.sub(reg8bits.get(Reg.A), right));
         } break;
         case CP_A_R8: {
-            int left = reg8bits.get(Reg.A);
             int right = reg8bits.get(extractReg(opcode, 0));
-            boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setFlagsFromAlu(Alu.sub(left, right, carry));
+            setFlagsFromAlu(Alu.sub(reg8bits.get(Reg.A), right));
         } break;
         case CP_A_HLR: {
-            int left = reg8bits.get(Reg.A);
             int right = read8(getReg16(Reg16.HL));
-            boolean carry = extractCarryFromOpcodeAndFlags(opcode);
-            setFlagsFromAlu(Alu.sub(left, right, carry));
+            setFlagsFromAlu(Alu.sub(reg8bits.get(Reg.A), right));
         } break;
         case DEC_R16SP: {
             Reg16 r = extractReg16(opcode);
@@ -501,8 +495,7 @@ public final class Cpu implements Component, Clocked {
         } break;
         // Misc. ALU Instructions :
         case DAA: {
-            int regF = reg8bits.get(Reg.F);
-            int res = Alu.bcdAdjust(reg8bits.get(Reg.A), Bits.test(regF, Flag.N), Bits.test(regF, Flag.H), Bits.test(regF, Flag.C));
+            int res = Alu.bcdAdjust(reg8bits.get(Reg.A), getFlagValue(Flag.N), getFlagValue(Flag.H), getFlagValue(Flag.C));
             setRegAndFlags(Reg.A, res);
         } break;
         case SCCF: {
@@ -524,12 +517,12 @@ public final class Cpu implements Component, Clocked {
         } break;
         case JR_E8: {
             int e8 = Bits.signExtend8(read8AfterOpcode());
-            nextPC =  Bits.clip(Byte.SIZE * 2, PC + opcode.totalBytes + e8);
+            nextPC =  Bits.clip(Byte.SIZE * 2, nextPC + e8);
         } break;
         case JR_CC_E8: {
             if (readAndTestCondition(opcode)) {
                 int e8 = Bits.signExtend8(read8AfterOpcode());
-                nextPC =  Bits.clip(Byte.SIZE * 2, PC + opcode.totalBytes + e8);
+                nextPC =  Bits.clip(Byte.SIZE * 2, nextPC + e8);
                 nextNonIdleCycle += opcode.additionalCycles;
             }
         } break;
@@ -573,7 +566,8 @@ public final class Cpu implements Component, Clocked {
         case STOP:
             throw new Error("STOP is not implemented");
         default:
-            throw new Error("Family opcode non supported");
+            throw new Error("Family opcode non supported : " + opcode.family
+                    + ".\nOpcode : 0x" + Integer.toHexString(opcode.encoding));
         }
         PC = nextPC;
         nextNonIdleCycle += opcode.cycles;
@@ -684,10 +678,6 @@ public final class Cpu implements Component, Clocked {
         }
     }
 
-    private int extractHLIncrement(Opcode opcode) {
-        return (opcode.encoding & Bits.mask(INDEX_INCREM_HL)) != 0 ? -1 : 1;
-    }
-
     private void setRegFromAlu(Reg reg, int valueFlags) {
         reg8bits.set(reg, Bits.extract(valueFlags, Byte.SIZE, Byte.SIZE));
     }
@@ -723,6 +713,9 @@ public final class Cpu implements Component, Clocked {
         }
     }
 
+    private int extractHLIncrement(Opcode opcode) {
+        return (opcode.encoding & Bits.mask(INDEX_INCREM_HL)) != 0 ? -1 : 1;
+    }
     private boolean extractCarryFromOpcodeAndFlags(Opcode opcode) {
         return Bits.test(opcode.encoding, 3) && Bits.test(reg8bits.get(Reg.F), Flag.C);
     }
