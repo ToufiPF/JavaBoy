@@ -10,6 +10,41 @@ import java.util.Objects;
  */
 public final class BitVector {
     
+    public final static class Builder {
+        private int[] bits;
+        
+        public Builder(int size) {
+            if (!isDivisibleBy32(size))
+                throw new IllegalArgumentException();
+            bits = new int[size / Integer.SIZE];
+        }
+        
+        public void setByte(int index, byte val) {
+            if (bits == null)
+                throw new IllegalStateException("BitVector already built !");
+            if (0 <= index || index < bits.length * Integer.BYTES)
+                throw new IndexOutOfBoundsException();
+            
+            final int q = index / Integer.SIZE;
+            final int r = index % Integer.SIZE;
+            bits[q] &= Bits.fullmask(Byte.SIZE) << r;
+            bits[q] |= val << r;
+        }
+        
+        public BitVector build() {
+            if (bits == null)
+                throw new IllegalStateException("BitVector already built !");
+            BitVector vec = new BitVector(bits);
+            bits = null;
+            return vec;
+        }
+    }
+    
+    private static boolean isDivisibleBy32(int n) {
+        // size % 32 <-> size & 0b0001_1111
+        return (n & Bits.fullmask(5)) == 0;
+    }
+    
     private final int[] bits;
     
     /**
@@ -136,12 +171,22 @@ public final class BitVector {
         return new BitVector(extracted);
     }
     
+    /**
+     * Shifts this BitVector of the given distance
+     * (left if distance is positive, right otherwise)
+     * @param distance (int) distance of the shift
+     * @return (BitVector) shifted BitVector
+     */
     public BitVector shift(int distance) {
         if (distance == 0)
             return this;
         return extractZeroExtended(distance, size());
     }
     
+    /**
+     * Returns the complement of this BitVector
+     * @return (BitVector) complement
+     */
     public BitVector not() {
         int[] nots = new int[bits.length];
         for (int i = 0 ; i < nots.length ; ++i)
@@ -149,6 +194,14 @@ public final class BitVector {
         return new BitVector(nots);
     }
     
+    /**
+     * Returns the conjunction (logic and)
+     * between the given BitVector and this one
+     * @param other (BitVector) 2nd vector
+     * @return (BitVector) conjunction
+     * @throws IllegalArgumentException
+     * if the two vectors don't have the same size
+     */
     public BitVector and(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
@@ -157,6 +210,14 @@ public final class BitVector {
             ands[i] = this.bits[i] & other.bits[i];
         return new BitVector(ands);
     }
+    /**
+     * Returns the disjunction (logic or)
+     * between the given BitVector and this one
+     * @param other (BitVector) 2nd vector
+     * @return (BitVector) disjunction
+     * @throws IllegalArgumentException
+     * if the two vectors don't have the same size
+     */
     public BitVector or(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
@@ -165,6 +226,14 @@ public final class BitVector {
             ors[i] = this.bits[i] | other.bits[i];
         return new BitVector(ors);
     }
+    /**
+     * Returns the exclusive or between
+     * the given BitVector and this one
+     * @param other (BitVector) 2nd vector
+     * @return (BitVector) exclusive or
+     * @throws IllegalArgumentException
+     * if the two vectors don't have the same size
+     */
     public BitVector xor(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
@@ -190,10 +259,6 @@ public final class BitVector {
         return build.toString();
     }
     
-    private boolean isDivisibleBy32(int n) {
-        // size % 32 <-> size & 0b0001_1111
-        return (n & Bits.fullmask(5)) == 0;
-    }
     private boolean isInArray(int index) {
         return 0 <= index && index < bits.length;
     }
