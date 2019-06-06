@@ -3,10 +3,23 @@ package ch.epfl.javaboy.bits;
 import java.util.Arrays;
 import java.util.Objects;
 
+/**
+ * Represents a vector of bits which size is 
+ * a multiple of 32 (Integer.SIZE)
+ * @author Toufi
+ */
 public final class BitVector {
     
     private final int[] bits;
     
+    /**
+     * Creates a new BitVector of the given size
+     * filled with the given value
+     * @param size (int) size
+     * @param value (int) value of the bits
+     * @throws IllegalArgumentException
+     * if size is not a multiple of 32, or negative
+     */
     public BitVector(int size, boolean value) {
         if (!(isDivisibleBy32(size) && size > 0))
             throw new IllegalArgumentException("Taille bits invalide.");
@@ -15,17 +28,38 @@ public final class BitVector {
         if (value)
             Arrays.fill(bits, -1);
     }
+    
+    /**
+    * Creates a new BitVector of the given size
+    * filled with 0s
+    * @param size (int) size
+    * @throws IllegalArgumentException
+    * if size is not a multiple of 32
+    */
     public BitVector(int size) {
         this(size, false);
     }
+    
     private BitVector(int[] bits) {
         this.bits = bits;
     }
     
+    /**
+     * Returns the size of the BitVector
+     * @return (int) number of bits
+     */
     public int size() {
         return bits.length * Integer.SIZE;
     }
     
+    /**
+     * Test the given bit
+     * @param index (int) index of the bit
+     * @return (boolean) true if the given bit is 1,
+     * false otherwise
+     * @throws IndexOutOfBoundsException
+     * if index is not valid
+     */
     public boolean testBit(int index) {
         Objects.checkIndex(index, size());
         int q = index / Integer.SIZE;
@@ -34,31 +68,74 @@ public final class BitVector {
         return Bits.test(bits[q], r);
     }
     
+    /**
+     * Extracts a vector starting at start, with the given size,
+     * from the zero extension of this BitVector 
+     * @param start (int) start of the extraction
+     * @param size (int) size of the extraction
+     * @return (BitVector) extracted BitVector
+     * @throws IllegalArgumentException
+     * if size is not divisible by 32, or size is negative
+     */
     public BitVector extractZeroExtended(int start, int size) {
-        if (!isDivisibleBy32(size))
+        if (!isDivisibleBy32(size) || size < 0)
             throw new IllegalArgumentException();
 
         int[] extracted = new int[size / Integer.SIZE];
-        
+
+        final int q = Math.floorDiv(start, Integer.SIZE);
         if (isDivisibleBy32(start)) {
-            int q = Math.floorDiv(start, Integer.SIZE);
             for (int i = 0 ; i < extracted.length ; ++i) {
-                if (0 <= q + i && q + i < bits.length)
+                if (isInArray(q + i))
                     extracted[i] = bits[q + i];
             }
-            return new BitVector(extracted);
         } else {
-            int q = Math.floorDiv(start, Integer.SIZE);
             int r = Math.floorMod(start, Integer.SIZE);
             
             for (int i = 0 ; i < extracted.length ; ++i) {
-                
+                int bits1 = 0, bits2 = 0;
+                if (isInArray(q + i))
+                    bits1 = Bits.extract(bits[q + i], r, Integer.SIZE - r);
+                if (isInArray(q + i + 1))
+                    bits2 = Bits.extract(bits[q + i + 1], 0, r);
+                extracted[i] = bits1 | (bits2 << (Integer.SIZE - r));
             }
         }
+        return new BitVector(extracted);
     }
+
+    /**
+     * Extracts a vector starting at start, with the given size,
+     * from the wrapped extension of this BitVector 
+     * @param start (int) start of the extraction
+     * @param size (int) size of the extraction
+     * @return (BitVector) extracted BitVector
+     * @throws IllegalArgumentException
+     * if size is not divisible by 32, or size is negative
+     */
     public BitVector extractWrapped(int start, int size) {
-        
+        if (!isDivisibleBy32(size) || size < 0)
+            throw new IllegalArgumentException();
+
+        int[] extracted = new int[size / Integer.SIZE];
+
+        final int q = Math.floorDiv(start, Integer.SIZE);
+        if (isDivisibleBy32(start)) {
+            for (int i = 0 ; i < extracted.length ; ++i) {
+                extracted[i] = bits[Math.floorMod(q + i, bits.length)];
+            }
+        } else {
+            int r = Math.floorMod(start, Integer.SIZE);
+            
+            for (int i = 0 ; i < extracted.length ; ++i) {
+                int bits1 = Bits.extract(bits[Math.floorMod(q + i, bits.length)], r, Integer.SIZE - r);
+                int bits2 = Bits.extract(bits[Math.floorMod(q + i + 1, bits.length)],  0, r);
+                extracted[i] = bits1 | (bits2 << (Integer.SIZE - r));
+            }
+        }
+        return new BitVector(extracted);
     }
+    
     public BitVector shift(int distance) {
         if (distance == 0)
             return this;
@@ -108,7 +185,7 @@ public final class BitVector {
     @Override
     public String toString() {
         StringBuilder build = new StringBuilder(size());
-        for (int i = 0 ; i < size() ; ++i)
+        for (int i = size() - 1 ; i >= 0 ; --i)
             build.append(testBit(i) ? '1' : '0');
         return build.toString();
     }
@@ -116,5 +193,8 @@ public final class BitVector {
     private boolean isDivisibleBy32(int n) {
         // size % 32 <-> size & 0b0001_1111
         return (n & Bits.fullmask(5)) == 0;
+    }
+    private boolean isInArray(int index) {
+        return 0 <= index && index < bits.length;
     }
 }
