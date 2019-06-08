@@ -5,6 +5,7 @@ import java.util.Objects;
 import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
+import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
@@ -17,6 +18,8 @@ import ch.epfl.javaboy.component.memory.RamController;
 public final class GameBoy {
     private final Bus bus;
     private final Cpu cpu;
+    private final LcdController lcd;
+    
     private final Timer timer;
     
     private final BootRomController bootRomCtrl;
@@ -37,6 +40,8 @@ public final class GameBoy {
         bus = new Bus();
         cpu = new Cpu();
         cpu.attachTo(bus);
+        lcd = new LcdController(cpu);
+        lcd.attachTo(bus);
         
         timer = new Timer(cpu);
         timer.attachTo(bus);
@@ -70,6 +75,14 @@ public final class GameBoy {
     }
     
     /**
+     * Returns the LcdController
+     * @return
+     */
+    public LcdController lcdController() {
+        return lcd;
+    }
+    
+    /**
      * Returns the timer
      * @return (Timer) timer of the GameBoy
      */
@@ -89,6 +102,7 @@ public final class GameBoy {
             throw new IllegalArgumentException("Cycle already simulated.");
         while (simulatedCycles < cycle) {
             timer.cycle(simulatedCycles);
+            lcd.cycle(simulatedCycles);
             cpu.cycle(simulatedCycles);
             ++simulatedCycles;
         }
