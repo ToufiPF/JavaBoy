@@ -38,7 +38,7 @@ public final class LcdController implements Component, Clocked {
     private final RegisterFile<Reg> videoRegs;
     private final RamController videoRam;
     private final Cpu cpu;
-    private LcdImage.Builder builder;
+    private LcdImage.Builder nextImageBuilder;
     private LcdImage current;
     private long nextNonIdleCycle;
     private boolean isHalted;
@@ -48,8 +48,8 @@ public final class LcdController implements Component, Clocked {
         videoRam = new RamController(new Ram(AddressMap.VIDEO_RAM_SIZE),
                 AddressMap.VIDEO_RAM_START, AddressMap.VIDEO_RAM_END);
         this.cpu = cpu;
-        builder = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT);
-        current = builder.build();
+        nextImageBuilder = null;
+        current = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
         nextNonIdleCycle = 0;
         isHalted = false;
     }
@@ -81,6 +81,7 @@ public final class LcdController implements Component, Clocked {
             nextNonIdleCycle += 43;
             break;
         case 3:
+            nextImageBuilder.setLine(line, new LcdImageLine(LCD_WIDTH));
             ++line;
             setMode(0);
             nextNonIdleCycle += 51;

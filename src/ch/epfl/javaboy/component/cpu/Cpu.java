@@ -1,6 +1,7 @@
 package ch.epfl.javaboy.component.cpu;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 import ch.epfl.javaboy.AddressMap;
@@ -28,7 +29,8 @@ public final class Cpu implements Component, Clocked {
      * @author Toufi
      */
     public static enum Interrupt implements Bit {
-        VBLANK, LCD_STAT, TIMER, SERIAL, JOYPAD
+        VBLANK, LCD_STAT, TIMER, SERIAL, JOYPAD;
+        public final static List<Interrupt> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
     private static enum Reg implements Register {
@@ -102,9 +104,10 @@ public final class Cpu implements Component, Clocked {
             isHalted = false;
         }
 
-        if (cycle < nextNonIdleCycle || isHalted) {
+        if (cycle < nextNonIdleCycle || isHalted)
             return;
-        } else if (IME && interrupt != -1) {
+        
+        if (IME && interrupt != -1) {
             manageInterruption(Interrupt.values()[interrupt]);
         } else {
             int encoding = read8(PC);
