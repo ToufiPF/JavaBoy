@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
 import ch.epfl.javaboy.bits.Bit;
@@ -14,7 +15,6 @@ import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 import ch.epfl.javaboy.component.memory.Ram;
-import ch.epfl.javaboy.component.memory.RamController;
 
 public final class LcdController implements Component, Clocked {
     public static enum Reg implements Register {
@@ -35,138 +35,275 @@ public final class LcdController implements Component, Clocked {
     public static final int LCD_WIDTH = 160;
     public static final int LCD_HEIGHT = 144;
 
-    private final RegisterFile<Reg> videoRegs;
-    private final RamController videoRam;
+    private static enum Mode {
+        MODE0(51), MODE1(114), MODE2(20), MODE3(43);
+        public static final List<Mode> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+
+        private final int duration;
+
+        private Mode(int duration) {
+            this.duration = duration;
+        }
+        public int duration() {
+            return duration;
+        }
+    }
+
+    private static final int TILE_SIZE = 8;
+    private static final int NB_TILES = 32;
+    private static final int ALL_TILES_SIZE = 256;
+
+    private static final int LY_OVERFLOW = LCD_HEIGHT + 10;
+
+    private static final int BYTES_PER_TILE_LINE = 2, BYTES_PER_TILE = BYTES_PER_TILE_LINE * TILE_SIZE;
+
+    private static final LcdImage BLANK_IMAGE = 
+            new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
+    private static final LcdImageLine BLANK_LINE = 
+            new LcdImageLine.Builder(LCD_WIDTH).build();
+
+    private static final int OFFSET_WX = -7;
+
+    private final RegisterFile<Reg> vregs;
+    private final Ram vRam, oam;
     private final Cpu cpu;
+
     private LcdImage.Builder nextImageBuilder;
     private LcdImage current;
     private long nextNonIdleCycle;
     private boolean isHalted;
+    private int winY;
 
     public LcdController(Cpu cpu) {
-        videoRegs = new RegisterFile<>(Reg.values());
-        videoRam = new RamController(new Ram(AddressMap.VIDEO_RAM_SIZE),
-                AddressMap.VIDEO_RAM_START, AddressMap.VIDEO_RAM_END);
+        vregs = new RegisterFile<>(Reg.values());
+        vRam = new Ram(AddressMap.VIDEO_RAM_SIZE);
+        oam = new Ram(AddressMap.OAM_RAM_SIZE);
         this.cpu = cpu;
-        nextImageBuilder = null;
-        current = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
+
+        nextImageBuilder = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT);
+        current = BLANK_IMAGE;
         nextNonIdleCycle = 0;
-        isHalted = false;
+        isHalted = true;
+        winY = 0;
     }
 
     @Override
     public void cycle(long cycle) {
+        if (isHalted && vregs.testBit(Reg.LCDC, LCDCBits.LCD_STATUS)) {
+            isHalted = false;
+            nextNonIdleCycle = cycle;
+        }
+
         if (isHalted || cycle < nextNonIdleCycle)
             return;
 
-        int mode = getMode();
-        int line = videoRegs.get(Reg.LY);
-
-        switch (mode) {
-        case 0:
-            setMode(2);
-            nextNonIdleCycle += 20;
+        int nextLine = vregs.get(Reg.LY);
+        Mode nextMode = getMode();
+        switch (getMode()) {
+        case MODE2:
+            nextMode = Mode.MODE3;
+            nextImageBuilder.setLine(nextLine, createNewLine());
             break;
-        case 1:
-            ++line;
-            if (line > 153) {
-                line = 0;
-                setMode(2);
-                nextNonIdleCycle += 20;
-                cpu.requestInterrupt(Interrupt.VBLANK);
+        case MODE3:
+            nextMode = Mode.MODE0;
+            break;
+        case MODE0:
+            ++nextLine;
+            if (nextLine >= LCD_HEIGHT) {
+                nextMode = Mode.MODE1;
+                current = nextImageBuilder.build();
+            } else {
+                nextMode = Mode.MODE2;
             }
             break;
-        case 2:
-            setMode(3);
-            nextNonIdleCycle += 43;
-            break;
-        case 3:
-            nextImageBuilder.setLine(line, new LcdImageLine(LCD_WIDTH));
-            ++line;
-            setMode(0);
-            nextNonIdleCycle += 51;
+        case MODE1:
+            ++nextLine;
+            if (nextLine >= LY_OVERFLOW) {
+                nextLine = 0;
+                nextMode = Mode.MODE2;
+                nextImageBuilder = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT);
+            }
             break;
         default:
             throw new Error();
         }
+        setMode(nextMode);
+        nextNonIdleCycle += nextMode.duration();
+        writeToLycLy(Reg.LY, nextLine);
     }
 
     @Override
     public int read(int address) {
-        Reg reg = getRegForAddress(address);
+        Preconditions.checkBits16(address);
 
-        if (reg != null)
-            return videoRegs.get(reg);
+        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
+            return vregs.get(addressToReg(address));
 
-        return videoRam.read(address);
+        if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
+            return vRam.read(address - AddressMap.VIDEO_RAM_START);
+
+        if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
+            return oam.read(address - AddressMap.OAM_START);
+
+        return NO_DATA;
     }
-
     @Override
     public void write(int address, int value) {
-        Reg reg = getRegForAddress(address);
+        Preconditions.checkBits16(address);
+        Preconditions.checkBits8(value);
 
-        if (reg != null) {
-            if (reg == Reg.LCDC) {
-                videoRegs.set(Reg.LCDC, value);
-                if (!videoRegs.testBit(Reg.LCDC, LCDCBits.LCD_STATUS)) {
-                    setMode(0);
-                    videoRegs.set(Reg.LY, 0);
-                    refreshLycEqLy();
-                    isHalted = true;
-                }
-            } else if (reg == Reg.STAT) {
-                int prev = videoRegs.get(Reg.STAT);
-                int newVal = value & (Bits.fullmask(Byte.SIZE - 3) << 3);
-                newVal |= prev & Bits.fullmask(3);
-                videoRegs.set(Reg.STAT, newVal);
-            } else if (reg == Reg.LYC) {
-                videoRegs.set(Reg.LYC, value);
-                refreshLycEqLy();
-            } else {
-                videoRegs.set(reg, value);
-            }
-        } else {
-            videoRam.write(address, value);
-        }
+        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
+            writeToReg(address, value);
+        else if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
+            vRam.write(address - AddressMap.VIDEO_RAM_START, value);
+        else if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
+            oam.write(address - AddressMap.OAM_START, value);
     }
 
     public LcdImage currentImage() {
         return current;
     }
 
-    private Reg getRegForAddress(int address) {
-        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
-            return Reg.ALL.get(address - AddressMap.REGS_LCDC_START);
+    private LcdImageLine createNewLine() {
+        int lineIndex = (vregs.get(Reg.SCY) + vregs.get(Reg.LY)) % ALL_TILES_SIZE;
+        LcdImageLine lcdLine = backgroundLine(lineIndex);
+        lcdLine = addWindowLine(lcdLine, lineIndex);
+        return lcdLine;
+    }
+    
+    
+    /* Drawing Methods */
+    
+    private LcdImageLine backgroundLine(int line) {
+        if (vregs.testBit(Reg.LCDC, LCDCBits.BG))
+            return computeBackgroundLine(line);
+        return BLANK_LINE;
+    }
+    private LcdImageLine addWindowLine(LcdImageLine lcdLine, int line) {
+        if (winY >= vregs.get(Reg.WY) && windowIsOn()) {
+            int winLineIndex = winY - vregs.get(Reg.WY);
+            LcdImageLine winLine = computeWindowLine(winLineIndex);
 
-        return null;
+            lcdLine = lcdLine.join(winLine, wx());
+            winY = (winY + 1) % ALL_TILES_SIZE;
+        }
+        return lcdLine;
+    }
+    
+    private LcdImageLine computeLine(int line, Bit bgOrWin_area) {
+        LcdImageLine.Builder lcdB = new LcdImageLine.Builder(ALL_TILES_SIZE);
+        for (int x = 0 ; x < ALL_TILES_SIZE / Byte.SIZE ; ++x) {
+            int id = getIdTile(x, line / TILE_SIZE, bgOrWin_area);
+            int msb_lsb = readTileMSBLSB(id, line % TILE_SIZE);
+            lcdB.setBytes(x, Bits.extract(msb_lsb, Byte.SIZE, Byte.SIZE), Bits.clip(Byte.SIZE, msb_lsb));
+        }
+        return lcdB.build();
+    }
+    private LcdImageLine computeBackgroundLine(int line) {
+        LcdImageLine l = computeLine(line, LCDCBits.BG_AREA);
+        return l.extractWrapped(vregs.get(Reg.SCX), LCD_WIDTH)
+                .mapColors((byte) vregs.get(Reg.BGP));
+    }
+    private LcdImageLine computeWindowLine(int line) {
+        LcdImageLine l = computeLine(line, LCDCBits.WIN_AREA);
+        return l.extractWrapped(0, LCD_WIDTH).shift(wx());
+    }
+    
+    
+    /* General Utilities */
+    
+    private int getIdTile(int xTile, int yTile, Bit b) {
+        int id = xTile + yTile * NB_TILES;
+        int bg_area = vregs.testBit(Reg.LCDC, b) ? 1 : 0;
+        return read(AddressMap.BG_DISPLAY_DATA[bg_area] + id);
+    }
+    private int readTileMSBLSB(int idTile, int line) {
+        boolean tile_source = vregs.testBit(Reg.LCDC, LCDCBits.TILE_SOURCE);
+        int address = (!tile_source && idTile < 0x80 ? 0x9000 : 0x8000)
+                + idTile * BYTES_PER_TILE + line * BYTES_PER_TILE_LINE;
+
+        return Bits.make16(Bits.reverse8(read(address + 1)), Bits.reverse8(read(address)));
     }
 
-    private int getMode() {
-        return Bits.extract(videoRegs.get(Reg.STAT), STATBits.MODE0.index(), 2);
+    private int wx() {
+        return vregs.get(Reg.WX) + OFFSET_WX;
+    }
+    private boolean windowIsOn() {
+        int wx = wx();
+        int wy = vregs.get(Reg.WY);
+        return vregs.testBit(Reg.LCDC,  LCDCBits.WIN) && 0 <= wx && wx < LCD_WIDTH && wy < LCD_HEIGHT;
     }
 
-    private void setMode(int mode) {
-        if (!(0 <= mode && mode < 4))
+    private Mode getMode() {
+        return Mode.ALL.get(Bits.extract(vregs.get(Reg.STAT), STATBits.MODE0.index(), 2));
+    }
+    private void setMode(Mode mode) {
+        if (!getMode().equals(mode)) {
+            vregs.set(Reg.STAT, vregs.get(Reg.STAT) & ~(0b11) | mode.ordinal());
+
+            if ((mode == Mode.MODE0 && vregs.testBit(Reg.STAT, STATBits.INT_MODE0)) || 
+                    (mode == Mode.MODE1 && vregs.testBit(Reg.STAT, STATBits.INT_MODE1)) || 
+                    (mode == Mode.MODE2 && vregs.testBit(Reg.STAT, STATBits.INT_MODE2)))
+                cpu.requestInterrupt(Interrupt.LCD_STAT);
+
+            if (mode == Mode.MODE1)
+                cpu.requestInterrupt(Interrupt.VBLANK);
+        }
+    }
+
+
+    /* Registers IO Methods */
+
+    private Reg addressToReg(int address) {
+        return Reg.ALL.get(address - AddressMap.REGS_LCDC_START);
+    }
+    private void writeToReg(int address, int value) {
+        Reg reg = addressToReg(address);
+        switch (reg) {
+        case LCDC:
+            vregs.set(Reg.LCDC, value);
+            if (!vregs.testBit(Reg.LCDC, LCDCBits.LCD_STATUS)) {
+                setMode(Mode.MODE0);
+                writeToLycLy(Reg.LY, 0);
+                isHalted = true;
+            }
+            break;
+        case STAT:
+            int lsb = Bits.clip(3, vregs.get(Reg.STAT));
+            int msb = Bits.extract(value, 3, Byte.SIZE - 3) << 3;
+            vregs.set(Reg.STAT, msb | lsb);
+            break;
+        case LYC:
+            writeToLycLy(Reg.LYC, value);
+            break;
+        case LY:
+            break;
+        default:
+            vregs.set(reg, value);
+            break;  
+        }
+    }
+
+    private void writeToLycLy(Reg lycOrLy, int val) {
+        if (lycOrLy ==  Reg.LYC) {
+            if (val != vregs.get(Reg.LYC)) {
+                vregs.set(Reg.LYC, val);
+                boolean equal = vregs.get(Reg.LYC) == vregs.get(Reg.LY);
+                vregs.setBit(Reg.STAT, STATBits.LYC_EQ_LY, equal);
+                if (equal && vregs.testBit(Reg.STAT, STATBits.INT_LYC))
+                    cpu.requestInterrupt(Interrupt.LCD_STAT);
+            }
+        } else if (lycOrLy == Reg.LY) {
+            if (val != vregs.get(Reg.LY)) {
+                vregs.set(Reg.LY, val);
+                boolean equal = vregs.get(Reg.LYC) == vregs.get(Reg.LY);
+                vregs.setBit(Reg.STAT, STATBits.LYC_EQ_LY, equal);
+                if (equal && vregs.testBit(Reg.STAT, STATBits.INT_LYC))
+                    cpu.requestInterrupt(Interrupt.LCD_STAT);
+            }
+
+        } else {
             throw new IllegalArgumentException();
-        boolean bit0 = Bits.test(mode, 0);
-        boolean bit1 = Bits.test(mode, 1);
-
-        videoRegs.setBit(Reg.STAT, STATBits.MODE0, bit0);
-        videoRegs.setBit(Reg.STAT, STATBits.MODE1, bit1);
-
-        if ((mode == 0 && videoRegs.testBit(Reg.STAT, STATBits.INT_MODE0)) || 
-                (mode == 1 && videoRegs.testBit(Reg.STAT, STATBits.INT_MODE1)) || 
-                (mode == 2 && videoRegs.testBit(Reg.STAT, STATBits.INT_MODE2)))
-            cpu.requestInterrupt(Interrupt.LCD_STAT);
-
-        if (mode == 1)
-            cpu.requestInterrupt(Interrupt.VBLANK);
-    }
-
-    private void refreshLycEqLy() {
-        boolean equal = videoRegs.get(Reg.LYC) == videoRegs.get(Reg.LY);
-        videoRegs.setBit(Reg.STAT, STATBits.LYC_EQ_LY, equal);
-        if (equal && videoRegs.testBit(Reg.STAT, STATBits.INT_LYC))
-            cpu.requestInterrupt(Interrupt.LCD_STAT);
+        }
     }
 }
