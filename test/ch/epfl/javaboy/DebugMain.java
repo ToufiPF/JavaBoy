@@ -24,14 +24,21 @@ public final class DebugMain {
             "09-op r,r.gb", "10-bit ops.gb", "11-op a,(hl).gb",
             "instr_timing.gb"
     };
+    
+    public static final String[] romNames2 = {
+            "07-jr,jp,call,ret,rst.gb", "flappyboy.gb", "tetris.gb"
+    };
 
     public static void main(String[] args) throws IOException {
 
         if (args.length >= 1) {
             runTest1(new File(args[0]));
         } else {
+            /*
             for (int i = 0 ; i < romNames1.length ; ++i)
-                runTest1(new File("Roms/" + romNames1[i]));
+                runTest2(new File("Roms/" + romNames1[i]));
+            */
+            runTest2(new File("Roms/" + romNames2[2]));
         }
     }
 

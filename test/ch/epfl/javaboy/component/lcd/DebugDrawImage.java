@@ -24,7 +24,7 @@ public final class DebugDrawImage {
             for (int y = 0; y < h; ++y) {
                 LcdImageLine.Builder lb = new LcdImageLine.Builder(w);
                 for (int x = 0; x < w / Byte.SIZE; ++x)
-                    lb.setBytes(x, (byte)s.read(), (byte)s.read());
+                    lb.setBytes(x, s.read(), s.read());
                 ib.setLine(y, lb.build());
             }
         }
