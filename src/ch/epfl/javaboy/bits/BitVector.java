@@ -3,6 +3,8 @@ package ch.epfl.javaboy.bits;
 import java.util.Arrays;
 import java.util.Objects;
 
+import ch.epfl.javaboy.Preconditions;
+
 /**
  * Represents a vector of bits which size is 
  * a multiple of 32 (Integer.SIZE)
@@ -32,20 +34,21 @@ public final class BitVector {
         /**
          * Sets the value of the byte at the given index
          * @param index (int) index of the byte
-         * @param val (byte) value of the byte
+         * @param val (int) 8 bits value of the byte
          * @throws IllegalStateException
          * if the BitVector was already built
          */
-        public void setByte(int index, byte val) {
+        public void setByte(int index, int val) {
             if (bits == null)
                 throw new IllegalStateException("BitVector already built !");
             if (!(0 <= index && index < bits.length * Integer.BYTES))
                 throw new IndexOutOfBoundsException();
+            Preconditions.checkBits8(val);
 
-            final int q = index / Integer.BYTES;
-            final int r = index % Integer.BYTES;
-            bits[q] &= ~(Bits.fullmask(Byte.SIZE) << (r * Byte.SIZE));
-            bits[q] |= (0xFF & val) << (r * Byte.SIZE);
+            final int intIndex = index / Integer.BYTES;
+            final int bitIndex = (index % Integer.BYTES) * Byte.SIZE;
+            bits[intIndex] &= ~(0xFF << bitIndex);
+            bits[intIndex] |= val << bitIndex;
         }
         
         /**

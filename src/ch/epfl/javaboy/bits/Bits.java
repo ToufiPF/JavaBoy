@@ -195,7 +195,7 @@ public final class Bits {
     
     /**
      * Returns a 16 bits vector constitued
-     * the the two given 8 bits ones
+     * of the concatenation of the given 8 bits ones
      * @param highB (int) 8 bits vector
      * @param lowB (int) 8 bits vector
      * @return (int) 16 bits merged
