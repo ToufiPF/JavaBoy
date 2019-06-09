@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public final class LcdImage {
     
@@ -16,6 +17,7 @@ public final class LcdImage {
         }
         
         public void setLine(int y, LcdImageLine line) {
+            Objects.requireNonNull(line);
             lines.set(y, line);
         }
         
@@ -42,9 +44,8 @@ public final class LcdImage {
     
     public int getColor(int x, int y) {
         LcdImageLine l = lines.get(y);
-        int color = l.lsb().testBit(x) ? 1 : 0;
-        color |= (l.msb().testBit(x) ? 1 : 0) << 1;
-        return color;
+        return (l.lsb().testBit(x) ? 0b01 : 0b00) 
+                | (l.msb().testBit(x) ? 0b10 : 0b00);
     }
     
     @Override

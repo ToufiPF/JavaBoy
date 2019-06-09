@@ -15,9 +15,10 @@ public final class LcdImageLine {
             lsb = new BitVector.Builder(size);
         }
 
-        public void setBytes(int index, byte ms, byte ls) {
+        public Builder setBytes(int index, int ms, int ls) {
             msb.setByte(index, ms);
             lsb.setByte(index, ls);
+            return this;
         }
         
         public LcdImageLine build() {
@@ -105,8 +106,7 @@ public final class LcdImageLine {
     public LcdImageLine join(LcdImageLine other, int start) {
         if (!(0 <= start && start < size()))
             throw new IllegalArgumentException();
-        BitVector opacity = new BitVector(size(), true);
-        opacity = opacity.shift(start);
+        BitVector opacity = new BitVector(size(), true).shift(start);
         return below(other, opacity.not());
     }
 
