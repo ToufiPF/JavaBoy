@@ -9,6 +9,9 @@ import ch.epfl.javaboy.component.lcd.LcdController;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
@@ -24,11 +27,19 @@ public final class Main extends Application {
         }
     }
 
+    private static void displayErrorAndExit(String... msg) {
+        for (String s : msg)
+            System.err.println(s);
+        System.exit(1);
+    }
+
     private Stage primaryStage;
     private GameBoy gb;
     
     private ImageView view;
+    private BorderPane root;
     private Scene scene;
+    private MenuBar menuBar;
     
     public Main() {
         primaryStage = null;
@@ -53,13 +64,13 @@ public final class Main extends Application {
         gb = new GameBoy(Cartridge.ofFile(romFile));
         
         createScene();
+        createMenuBar();
         
-        AnimationTimer timer = createAnimationTimer(System.nanoTime());
-        timer.start();
+        createAnimationTimer(System.nanoTime()).start();
         
         primaryStage = arg0;
-        primaryStage.setMinWidth(view.getFitWidth());
-        primaryStage.setMinHeight(view.getFitHeight());
+        primaryStage.setMinWidth(view.getFitWidth() + 30);
+        primaryStage.setMinHeight(view.getFitHeight() + 80);
         primaryStage.setTitle("JavaBoy - A GameBoy Emulator by Toufi");
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -78,14 +89,14 @@ public final class Main extends Application {
             
         });
         
-        BorderPane pane = new BorderPane(view);
+        root = new BorderPane(view);
         
-        scene =  new Scene(pane);
+        scene =  new Scene(root);
     }
     
     private AnimationTimer createAnimationTimer(long startTime) {
-        final long CYCLES_PER_SECOND = 1L << 20;
         return new AnimationTimer() {
+            private static final long CYCLES_PER_SECOND = 1L << 20;
             @Override
             public void handle(long now) {
                 double elapsed = (double) (now - startTime) / 1e9;
@@ -97,9 +108,30 @@ public final class Main extends Application {
         };
     }
     
-    private static void displayErrorAndExit(String... msg) {
-        for (String s : msg)
-            System.err.println(s);
-        System.exit(1);
+    private void createMenuBar() {
+        menuBar = new MenuBar();
+
+        Menu fileMenu = new Menu("File");
+        MenuItem quit = new MenuItem("Quit");
+        quit.setOnAction(e -> System.exit(0));
+        fileMenu.getItems().addAll(quit);
+        
+        Menu optionsMenu = new Menu("Options");
+        MenuItem control = new MenuItem("Control");
+        control.setOnAction(e -> {
+            
+        });
+        optionsMenu.getItems().addAll(control);
+        
+        Menu helpMenu = new Menu("Help");
+        MenuItem about = new MenuItem("About");
+        about.setOnAction(e -> {
+            
+        });
+        helpMenu.getItems().addAll(about);
+        
+        menuBar.getMenus().addAll(fileMenu, optionsMenu, helpMenu);
+        
+        root.setTop(menuBar);
     }
 }
