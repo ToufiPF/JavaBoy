@@ -24,9 +24,10 @@ public interface Preconditions {
      * @throws IllegalArgumentException 
      * if v takes more than 8 bits
      */
-    public static void checkBits8(int v) {
+    public static int checkBits8(int v) {
         if (!(0 <= v && v <= 0xFF))
             throw new IllegalArgumentException("Non 8 bits : 0x" + Integer.toHexString(v));
+        return v;
     }
     
     /**
@@ -36,8 +37,9 @@ public interface Preconditions {
      * @throws IllegalArgumentException 
      * if v takes more than 16 bits
      */
-    public static void checkBits16(int v) {
+    public static int checkBits16(int v) {
         if (!(0 <= v && v <= 0xFFFF))
             throw new IllegalArgumentException("Non 16 bits : 0x" + Integer.toHexString(v));
+        return v;
     }
 }

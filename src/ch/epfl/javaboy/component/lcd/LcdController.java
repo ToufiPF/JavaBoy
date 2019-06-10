@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.List;
 
 import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.Bus;
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
@@ -22,18 +23,20 @@ public final class LcdController implements Component, Clocked {
         public static final List<Reg> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static enum LCDCBits implements Bit {
+    public static enum Lcdc implements Bit {
         BG, OBJ, OBJ_SIZE, BG_AREA, TILE_SOURCE, WIN, WIN_AREA, LCD_STATUS;
-        public static final List<LCDCBits> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Lcdc> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static enum STATBits implements Bit {
+    public static enum Stat implements Bit {
         MODE0, MODE1, LYC_EQ_LY, INT_MODE0, INT_MODE1, INT_MODE2, INT_LYC;
-        public static final List<STATBits> All = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Stat> All = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static final int LCD_WIDTH = 160;
-    public static final int LCD_HEIGHT = 144;
+    public static enum SpriteAttributes implements Bit {
+        UNUSED0, UNUSED1, UNUSED2, UNUSED3, PALETTE, FLIP_H, FLIP_V, BEHIND_BG;
+        public static final List<SpriteAttributes> All = Collections.unmodifiableList(Arrays.asList(values()));
+    }
 
     private static enum Mode {
         MODE0(51), MODE1(114), MODE2(20), MODE3(43);
@@ -48,6 +51,9 @@ public final class LcdController implements Component, Clocked {
             return duration;
         }
     }
+
+    public static final int LCD_WIDTH = 160;
+    public static final int LCD_HEIGHT = 144;
 
     private static final int TILE_SIZE = 8;
     private static final int NB_TILES = 32;
@@ -67,6 +73,7 @@ public final class LcdController implements Component, Clocked {
     private final RegisterFile<Reg> vregs;
     private final Ram vRam, oam;
     private final Cpu cpu;
+    private Bus bus;
 
     private LcdImage.Builder nextImageBuilder;
     private LcdImage current;
@@ -79,17 +86,22 @@ public final class LcdController implements Component, Clocked {
         vRam = new Ram(AddressMap.VIDEO_RAM_SIZE);
         oam = new Ram(AddressMap.OAM_RAM_SIZE);
         this.cpu = cpu;
-
+        bus = null;
+        
         nextImageBuilder = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT);
         current = BLANK_IMAGE;
         nextNonIdleCycle = 0;
         isHalted = true;
         winY = 0;
     }
-
+    @Override
+    public void attachTo(Bus bus) {
+        this.bus = bus;
+        Component.super.attachTo(bus);
+    }
     @Override
     public void cycle(long cycle) {
-        if (isHalted && vregs.testBit(Reg.LCDC, LCDCBits.LCD_STATUS)) {
+        if (isHalted && vregs.testBit(Reg.LCDC, Lcdc.LCD_STATUS)) {
             isHalted = false;
             nextNonIdleCycle = cycle;
         }
@@ -165,31 +177,30 @@ public final class LcdController implements Component, Clocked {
     }
 
     private LcdImageLine createNewLine() {
-        int lineIndex = (vregs.get(Reg.SCY) + vregs.get(Reg.LY)) % ALL_TILES_SIZE;
-        LcdImageLine lcdLine = backgroundLine(lineIndex);
-        lcdLine = addWindowLine(lcdLine, lineIndex);
+        int ly = vregs.get(Reg.LY);
+        int bgLineIndex = (vregs.get(Reg.SCY) + ly) % ALL_TILES_SIZE;
+        LcdImageLine lcdLine = backgroundLine(bgLineIndex);
+        lcdLine = addWindowLine(lcdLine, ly);
         return lcdLine;
     }
-    
-    
+
+
     /* Drawing Methods */
-    
+
     private LcdImageLine backgroundLine(int line) {
-        if (vregs.testBit(Reg.LCDC, LCDCBits.BG))
+        if (vregs.testBit(Reg.LCDC, Lcdc.BG))
             return computeBackgroundLine(line);
         return BLANK_LINE;
     }
     private LcdImageLine addWindowLine(LcdImageLine lcdLine, int line) {
-        if (winY >= vregs.get(Reg.WY) && windowIsOn()) {
-            int winLineIndex = winY - vregs.get(Reg.WY);
-            LcdImageLine winLine = computeWindowLine(winLineIndex);
-
+        if (windowIsOn() && line >= vregs.get(Reg.WY)) {
+            LcdImageLine winLine = computeWindowLine(winY);
             lcdLine = lcdLine.join(winLine, wx());
             winY = (winY + 1) % ALL_TILES_SIZE;
         }
         return lcdLine;
     }
-    
+
     private LcdImageLine computeLine(int line, Bit bgOrWin_area) {
         LcdImageLine.Builder lcdB = new LcdImageLine.Builder(ALL_TILES_SIZE);
         for (int x = 0 ; x < ALL_TILES_SIZE / Byte.SIZE ; ++x) {
@@ -200,25 +211,26 @@ public final class LcdController implements Component, Clocked {
         return lcdB.build();
     }
     private LcdImageLine computeBackgroundLine(int line) {
-        LcdImageLine l = computeLine(line, LCDCBits.BG_AREA);
+        LcdImageLine l = computeLine(line, Lcdc.BG_AREA);
         return l.extractWrapped(vregs.get(Reg.SCX), LCD_WIDTH)
                 .mapColors((byte) vregs.get(Reg.BGP));
     }
     private LcdImageLine computeWindowLine(int line) {
-        LcdImageLine l = computeLine(line, LCDCBits.WIN_AREA);
-        return l.extractWrapped(0, LCD_WIDTH).shift(wx());
+        LcdImageLine l = computeLine(line, Lcdc.WIN_AREA);
+        return l.extractWrapped(0, LCD_WIDTH).shift(wx())
+                .mapColors((byte) vregs.get(Reg.BGP));
     }
-    
-    
+
+
     /* General Utilities */
-    
+
     private int getIdTile(int xTile, int yTile, Bit b) {
         int id = xTile + yTile * NB_TILES;
-        int bg_area = vregs.testBit(Reg.LCDC, b) ? 1 : 0;
-        return read(AddressMap.BG_DISPLAY_DATA[bg_area] + id);
+        int area = vregs.testBit(Reg.LCDC, b) ? 1 : 0;
+        return read(AddressMap.BG_DISPLAY_DATA[area] + id);
     }
     private int readTileMSBLSB(int idTile, int line) {
-        boolean tile_source = vregs.testBit(Reg.LCDC, LCDCBits.TILE_SOURCE);
+        boolean tile_source = vregs.testBit(Reg.LCDC, Lcdc.TILE_SOURCE);
         int address = (!tile_source && idTile < 0x80 ? 0x9000 : 0x8000)
                 + idTile * BYTES_PER_TILE + line * BYTES_PER_TILE_LINE;
 
@@ -230,20 +242,19 @@ public final class LcdController implements Component, Clocked {
     }
     private boolean windowIsOn() {
         int wx = wx();
-        int wy = vregs.get(Reg.WY);
-        return vregs.testBit(Reg.LCDC,  LCDCBits.WIN) && 0 <= wx && wx < LCD_WIDTH && wy < LCD_HEIGHT;
+        return vregs.testBit(Reg.LCDC,  Lcdc.WIN) && 0 <= wx && wx < LCD_WIDTH;
     }
 
     private Mode getMode() {
-        return Mode.ALL.get(Bits.extract(vregs.get(Reg.STAT), STATBits.MODE0.index(), 2));
+        return Mode.ALL.get(Bits.extract(vregs.get(Reg.STAT), Stat.MODE0.index(), 2));
     }
     private void setMode(Mode mode) {
         if (!getMode().equals(mode)) {
             vregs.set(Reg.STAT, vregs.get(Reg.STAT) & ~(0b11) | mode.ordinal());
 
-            if ((mode == Mode.MODE0 && vregs.testBit(Reg.STAT, STATBits.INT_MODE0)) || 
-                    (mode == Mode.MODE1 && vregs.testBit(Reg.STAT, STATBits.INT_MODE1)) || 
-                    (mode == Mode.MODE2 && vregs.testBit(Reg.STAT, STATBits.INT_MODE2)))
+            if ((mode == Mode.MODE0 && vregs.testBit(Reg.STAT, Stat.INT_MODE0)) || 
+                    (mode == Mode.MODE1 && vregs.testBit(Reg.STAT, Stat.INT_MODE1)) || 
+                    (mode == Mode.MODE2 && vregs.testBit(Reg.STAT, Stat.INT_MODE2)))
                 cpu.requestInterrupt(Interrupt.LCD_STAT);
 
             if (mode == Mode.MODE1)
@@ -262,7 +273,7 @@ public final class LcdController implements Component, Clocked {
         switch (reg) {
         case LCDC:
             vregs.set(Reg.LCDC, value);
-            if (!vregs.testBit(Reg.LCDC, LCDCBits.LCD_STATUS)) {
+            if (!vregs.testBit(Reg.LCDC, Lcdc.LCD_STATUS)) {
                 setMode(Mode.MODE0);
                 writeToLycLy(Reg.LY, 0);
                 isHalted = true;
@@ -289,16 +300,16 @@ public final class LcdController implements Component, Clocked {
             if (val != vregs.get(Reg.LYC)) {
                 vregs.set(Reg.LYC, val);
                 boolean equal = vregs.get(Reg.LYC) == vregs.get(Reg.LY);
-                vregs.setBit(Reg.STAT, STATBits.LYC_EQ_LY, equal);
-                if (equal && vregs.testBit(Reg.STAT, STATBits.INT_LYC))
+                vregs.setBit(Reg.STAT, Stat.LYC_EQ_LY, equal);
+                if (equal && vregs.testBit(Reg.STAT, Stat.INT_LYC))
                     cpu.requestInterrupt(Interrupt.LCD_STAT);
             }
         } else if (lycOrLy == Reg.LY) {
             if (val != vregs.get(Reg.LY)) {
                 vregs.set(Reg.LY, val);
                 boolean equal = vregs.get(Reg.LYC) == vregs.get(Reg.LY);
-                vregs.setBit(Reg.STAT, STATBits.LYC_EQ_LY, equal);
-                if (equal && vregs.testBit(Reg.STAT, STATBits.INT_LYC))
+                vregs.setBit(Reg.STAT, Stat.LYC_EQ_LY, equal);
+                if (equal && vregs.testBit(Reg.STAT, Stat.INT_LYC))
                     cpu.requestInterrupt(Interrupt.LCD_STAT);
             }
 
