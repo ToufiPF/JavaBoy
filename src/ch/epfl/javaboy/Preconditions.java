@@ -63,7 +63,7 @@ public interface Preconditions {
      * @param length (int) bound
      */
     public static void checkFromIndexSize(int fromIndex, int size, int length) {
-        if (!(0 <= fromIndex && fromIndex + size < length && 0 <= size))
+        if (!(0 <= fromIndex && fromIndex + size <= length && 0 <= size))
             throw new IllegalArgumentException("Invalid range : index=" + fromIndex
                     + ", size=" + size + ", length=" + length);
     }
