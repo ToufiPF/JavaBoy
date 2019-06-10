@@ -10,6 +10,7 @@ import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
 import ch.epfl.javaboy.bits.Bit;
+import ch.epfl.javaboy.bits.BitVector;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Clocked;
 import ch.epfl.javaboy.component.Component;
@@ -51,6 +52,10 @@ public final class LcdController implements Component, Clocked {
             return duration;
         }
     }
+    
+    private static enum SpriteData {
+        Y, X, TILE, ATTRIBUTES
+    }
 
     public static final int LCD_WIDTH = 160;
     public static final int LCD_HEIGHT = 144;
@@ -69,9 +74,17 @@ public final class LcdController implements Component, Clocked {
             new LcdImageLine.Builder(LCD_WIDTH).build();
 
     private static final int OFFSET_WX = -7;
+    
+    private static final int OFFSET_SPRITE_X = -8;
+    private static final int OFFSET_SPRITE_Y = -16;
+    
+    private static final int TOTAL_SPRITES = 40;
+    private static final int BYTES_PER_SPRITE = 4;
+    
+    private static final int MAX_SPRITES_PER_LINE = 10;
 
     private final RegisterFile<Reg> vregs;
-    private final Ram vRam, oam;
+    private final Ram vRam, oamRam;
     private final Cpu cpu;
     private Bus bus;
 
@@ -80,11 +93,13 @@ public final class LcdController implements Component, Clocked {
     private long nextNonIdleCycle;
     private boolean isHalted;
     private int winY;
+    private boolean copyRequired;
+    private int copyIndex;
 
     public LcdController(Cpu cpu) {
         vregs = new RegisterFile<>(Reg.values());
         vRam = new Ram(AddressMap.VIDEO_RAM_SIZE);
-        oam = new Ram(AddressMap.OAM_RAM_SIZE);
+        oamRam = new Ram(AddressMap.OAM_RAM_SIZE);
         this.cpu = cpu;
         bus = null;
         
@@ -93,6 +108,8 @@ public final class LcdController implements Component, Clocked {
         nextNonIdleCycle = 0;
         isHalted = true;
         winY = 0;
+        copyRequired = false;
+        copyIndex = 0;
     }
     @Override
     public void attachTo(Bus bus) {
@@ -105,10 +122,18 @@ public final class LcdController implements Component, Clocked {
             isHalted = false;
             nextNonIdleCycle = cycle;
         }
-
+        
+        if (copyRequired)
+            copyOamByte();
+        
+        
         if (isHalted || cycle < nextNonIdleCycle)
             return;
-
+        
+        reallyCycle();
+    }
+    
+    private void reallyCycle() {
         int nextLine = vregs.get(Reg.LY);
         Mode nextMode = getMode();
         switch (getMode()) {
@@ -144,6 +169,17 @@ public final class LcdController implements Component, Clocked {
         writeToLycLy(Reg.LY, nextLine);
     }
 
+    private void copyOamByte() {
+        if (copyIndex < AddressMap.OAM_RAM_SIZE) {
+            final int srcAddress = vregs.get(Reg.DMA) << Byte.SIZE;
+            oamRam.write(copyIndex, bus.read(srcAddress + copyIndex));
+            ++copyIndex;
+        } else {
+            copyRequired = false;
+            copyIndex = 0;
+        }
+    }
+    
     @Override
     public int read(int address) {
         Preconditions.checkBits16(address);
@@ -155,7 +191,7 @@ public final class LcdController implements Component, Clocked {
             return vRam.read(address - AddressMap.VIDEO_RAM_START);
 
         if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
-            return oam.read(address - AddressMap.OAM_START);
+            return oamRam.read(address - AddressMap.OAM_START);
 
         return NO_DATA;
     }
@@ -169,7 +205,7 @@ public final class LcdController implements Component, Clocked {
         else if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
             vRam.write(address - AddressMap.VIDEO_RAM_START, value);
         else if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
-            oam.write(address - AddressMap.OAM_START, value);
+            oamRam.write(address - AddressMap.OAM_START, value);
     }
 
     public LcdImage currentImage() {
@@ -181,6 +217,7 @@ public final class LcdController implements Component, Clocked {
         int bgLineIndex = (vregs.get(Reg.SCY) + ly) % ALL_TILES_SIZE;
         LcdImageLine lcdLine = backgroundLine(bgLineIndex);
         lcdLine = addWindowLine(lcdLine, ly);
+        lcdLine = addSpriteLines(lcdLine, ly);
         return lcdLine;
     }
 
@@ -197,6 +234,16 @@ public final class LcdController implements Component, Clocked {
             LcdImageLine winLine = computeWindowLine(winY);
             lcdLine = lcdLine.join(winLine, wx());
             winY = (winY + 1) % ALL_TILES_SIZE;
+        }
+        return lcdLine;
+    }
+    private LcdImageLine addSpriteLines(LcdImageLine lcdLine, int line) {
+        if (vregs.testBit(Reg.LCDC, Lcdc.OBJ)) {
+            LcdImageLine bg = computeSpriteLine(line, true);
+            LcdImageLine fg = computeSpriteLine(line, false);
+
+            BitVector opacityMask = lcdLine.opacity().or(bg.opacity().not());
+            return bg.below(lcdLine, opacityMask).below(fg);
         }
         return lcdLine;
     }
@@ -220,7 +267,80 @@ public final class LcdController implements Component, Clocked {
         return l.extractWrapped(0, LCD_WIDTH).shift(wx())
                 .mapColors((byte) vregs.get(Reg.BGP));
     }
+    private LcdImageLine computeSpriteLine(int line, boolean background) {
+        LcdImageLine l = BLANK_LINE;
+        
+        for (int sprite : spritesIntersectingLine(line)) {
+            if (Bits.test(getSpriteData(sprite, SpriteData.ATTRIBUTES), SpriteAttributes.BEHIND_BG) == background) {
+                int msb_lsb = getMsbLsbSprite(sprite, line);
+                
+                LcdImageLine singleSpriteLine = new LcdImageLine.Builder(LCD_WIDTH)
+                        .setBytes(0, Bits.extract(msb_lsb, Byte.SIZE, Byte.SIZE), Bits.clip(Byte.SIZE, msb_lsb))
+                        .build();
+                singleSpriteLine = singleSpriteLine.shift(getSpriteData(sprite, SpriteData.X))
+                        .mapColors(spritePalette(sprite));
+                l = singleSpriteLine.below(l);
+            }
+        }
+        return l;
+    }
+    
+    /* Sprite Methods */
+    
+    private int getMsbLsbSprite(int spriteId, int line) {
+        int attributes = getSpriteData(spriteId, SpriteData.ATTRIBUTES);
+        boolean flipH = Bits.test(attributes, SpriteAttributes.FLIP_H);
+        boolean flipV = Bits.test(attributes, SpriteAttributes.FLIP_V);
+        
+        int trueLine = line - getSpriteData(spriteId, SpriteData.Y);
+        if (flipV)
+            trueLine = spriteHeight() - 1 - trueLine;
+        
+        final int address = AddressMap.TILE_SOURCE[1] + getSpriteData(spriteId, SpriteData.TILE) * BYTES_PER_TILE 
+                + 2 * trueLine;
+        int msb = flipH ? Bits.reverse8(read(address + 1)) : read(address + 1);
+        int lsb = flipH ? Bits.reverse8(read(address)) : read(address);
+        
+        return Bits.make16(msb, lsb);
+    }
+    
+    private int getSpriteData(int spriteId, SpriteData data) {
+        int info = oamRam.read(spriteId * BYTES_PER_SPRITE + data.ordinal());
+        if (data == SpriteData.X)
+            return info + OFFSET_SPRITE_X;
+        if (data == SpriteData.Y)
+            return info + OFFSET_SPRITE_Y;
+        return info;
+    }
+    private int spriteHeight() {
+        return vregs.testBit(Reg.LCDC, Lcdc.OBJ_SIZE) ? 2 * TILE_SIZE : TILE_SIZE;
+    }
+    private byte spritePalette(int spriteId) {
+        return (byte) (Bits.test(getSpriteData(spriteId, SpriteData.ATTRIBUTES), SpriteAttributes.PALETTE) ?
+                vregs.get(Reg.OBP1) : vregs.get(Reg.OBP0));
+    }
+    
+    private int[] spritesIntersectingLine(int line) {
+        final int height = spriteHeight();
+        
+        int[] packedSprites = new int[MAX_SPRITES_PER_LINE];
 
+        int sprites = 0;
+        for (int i = 0 ; i < TOTAL_SPRITES && sprites < MAX_SPRITES_PER_LINE ; ++i) {
+            int y = getSpriteData(i, SpriteData.Y);
+            if (y <= line && line < y + height) {
+                int x = getSpriteData(i, SpriteData.X);
+                packedSprites[sprites] = (x << Byte.SIZE) | i;
+                ++sprites;
+            }
+        }
+        Arrays.sort(packedSprites, 0, sprites);
+        
+        int[] selectedSprites = new int[sprites];
+        for (int i = 0 ; i < sprites ; ++i)
+            selectedSprites[i] = Bits.clip(Byte.SIZE, packedSprites[i]);
+        return selectedSprites;
+    }
 
     /* General Utilities */
 
@@ -288,6 +408,10 @@ public final class LcdController implements Component, Clocked {
             writeToLycLy(Reg.LYC, value);
             break;
         case LY:
+            break;
+        case DMA:
+            copyRequired = true;
+            vregs.set(Reg.DMA, value);
             break;
         default:
             vregs.set(reg, value);
