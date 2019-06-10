@@ -1,7 +1,6 @@
 package ch.epfl.javaboy.bits;
 
 import java.util.Arrays;
-import java.util.Objects;
 
 import ch.epfl.javaboy.Preconditions;
 
@@ -128,7 +127,7 @@ public final class BitVector {
      * if index is not valid
      */
     public boolean testBit(int index) {
-        Objects.checkIndex(index, size());
+        Preconditions.checkIndex(index, size());
         int q = index / Integer.SIZE;
         int r = index % Integer.SIZE;
 
@@ -281,7 +280,7 @@ public final class BitVector {
     }
     @Override
     public int hashCode() {
-        return  Arrays.hashCode(bits);
+        return Arrays.hashCode(bits);
     }
     @Override
     public String toString() {

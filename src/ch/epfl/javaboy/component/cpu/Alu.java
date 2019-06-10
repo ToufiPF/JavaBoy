@@ -1,7 +1,5 @@
 package ch.epfl.javaboy.component.cpu;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.bits.Bit;
 import ch.epfl.javaboy.bits.Bits;
@@ -356,7 +354,7 @@ public final class Alu {
      * @return (int) value = 0 and flags
      */
     public static int testBit(int v, int bitIndex) {
-        Objects.checkIndex(bitIndex, Byte.SIZE);
+        Preconditions.checkIndex(bitIndex, Byte.SIZE);
         Preconditions.checkBits8(v);
         boolean z = (v & Bits.mask(bitIndex)) == 0;
         return packValueZNHC(0, z, false, true, false);

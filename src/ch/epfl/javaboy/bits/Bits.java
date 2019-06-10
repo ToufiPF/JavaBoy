@@ -1,7 +1,5 @@
 package ch.epfl.javaboy.bits;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.Preconditions;
 
 /** Bits
@@ -71,7 +69,7 @@ public final class Bits {
      * if index is not valid
      */
     public static int mask(int index) {
-        Objects.checkIndex(index, Integer.SIZE);
+        Preconditions.checkIndex(index, Integer.SIZE);
         return 1 << index;
     }
 
@@ -84,7 +82,7 @@ public final class Bits {
      * given index is 1, false otherwise
      */
     public static boolean test(int bits, int index) {
-        Objects.checkIndex(index, Integer.SIZE);
+        Preconditions.checkIndex(index, Integer.SIZE);
         return (bits & mask(index)) != 0;
     }
     /**
@@ -131,7 +129,7 @@ public final class Bits {
      * @return (int) the extracted vector
      */
     public static int extract(int bits, int start, int size) {
-        Objects.checkFromIndexSize(start, size, Integer.SIZE);
+        Preconditions.checkFromIndexSize(start, size, Integer.SIZE);
         return (bits & (fullmask(size) << start)) >>> start;
     }
 

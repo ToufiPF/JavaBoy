@@ -1,5 +1,6 @@
 package ch.epfl.javaboy.component.cartridge;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -13,7 +14,7 @@ public final class Cartridge implements Component {
 
     public static Cartridge ofFile(File romFile) throws IOException {
         try (InputStream is = new FileInputStream(romFile)) {
-            byte[] data = is.readAllBytes();
+            byte[] data = readAllBytes(is);
 
             byte type = data[CARTRIGDE_TYPE_ADDRESS];
 
@@ -46,6 +47,21 @@ public final class Cartridge implements Component {
 
         }
     }
+    
+    private static byte[] readAllBytes(InputStream is) throws IOException {
+        ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+        
+        int nRead;
+        final int SAMPLE_SIZE = 1 << 14;
+        byte[] data = new byte[SAMPLE_SIZE];
+
+        while ((nRead = is.read(data, 0, data.length)) != -1) {
+          buffer.write(data, 0, nRead);
+        }
+
+        return buffer.toByteArray();
+    }
+    
     private final static int CARTRIGDE_TYPE_ADDRESS = 0x147;
 
     private final Component mbc;
