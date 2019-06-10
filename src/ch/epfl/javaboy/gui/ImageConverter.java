@@ -7,14 +7,15 @@ import javafx.scene.image.WritableImage;
 
 public final class ImageConverter {
     
-    private static final byte[] COLOR_MAP = {
-            (byte) 0xFFFF_FFFF,
-            (byte) 0xFFD3_D3D3,
-            (byte) 0xFFA9_A9A9,
-            (byte) 0xFF00_0000
+    private static final int[] COLOR_MAP = {
+            0xFFFF_FFFF,
+            0xFFD3_D3D3,
+            0xFFA9_A9A9,
+            0xFF00_0000
     };
     
     public static Image convert(LcdImage lcdImg) {
+        
         WritableImage img = new WritableImage(lcdImg.width(), lcdImg.height());
         PixelWriter writer = img.getPixelWriter();
         
