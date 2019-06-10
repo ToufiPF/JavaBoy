@@ -17,7 +17,7 @@ public final class DebugMain {
             0xFF_FF_FF, 0xD3_D3_D3, 0xA9_A9_A9, 0x00_00_00
     };
     
-    public static final String[] romNames1 = {
+    public static final String[] romNamesTests = {
             "01-special.gb", "02-interrupts.gb", "03-op sp,hl.gb",
             "04-op r,imm.gb", "05-op rp.gb", "06-ld r,r.gb",
             "07-jr,jp,call,ret,rst.gb", "08-misc instrs.gb",
@@ -25,8 +25,8 @@ public final class DebugMain {
             "instr_timing.gb"
     };
     
-    public static final String[] romNames2 = {
-            "07-jr,jp,call,ret,rst.gb", "flappyboy.gb", "tetris.gb"
+    public static final String[] romNamesGames = {
+            "flappyboy.gb", "tetris.gb"
     };
 
     public static void main(String[] args) throws IOException {
@@ -36,9 +36,9 @@ public final class DebugMain {
         } else {
             /*
             for (int i = 0 ; i < romNames1.length ; ++i)
-                runTest2(new File("Roms/" + romNames1[i]));
+                runTest2(new File("Roms/Tests/" + romNamesTests[i]));
             */
-            runTest2(new File("Roms/" + romNames2[2]));
+            runTest2(new File("Roms/Games/" + romNamesGames[1]));
         }
     }
 
