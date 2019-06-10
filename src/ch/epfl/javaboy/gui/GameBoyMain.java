@@ -1,7 +1,6 @@
 package ch.epfl.javaboy.gui;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.List;
 
 import ch.epfl.javaboy.GameBoy;
@@ -14,14 +13,14 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
-public final class Main extends Application {
+public final class GameBoyMain extends Application {
     
     public static void main(String[] args) {
         if (args.length != 0) {
-            launch(args);
+            Application.launch(args);
         } else {
             String[] params = { "Roms/Games/tetris.gb" };
-            launch(params);
+            Application.launch(params);
         }
     }
     
@@ -31,13 +30,16 @@ public final class Main extends Application {
     private ImageView view;
     private Scene scene;
     
-    public Main() {
+    public GameBoyMain() {
         primaryStage = null;
         gb = null;
+        
+        view = null;
+        scene = null;
     }
     
     @Override
-    public void start(Stage arg0) throws IOException {
+    public void start(Stage arg0) throws Exception {
         List<String> args = getParameters().getRaw();
         
         if (args.size() != 1)
@@ -80,12 +82,11 @@ public final class Main extends Application {
     }
     
     private AnimationTimer createAnimationTimer(long startTime) {
+        final long CYCLES_PER_SECOND = 1L << 20;
         return new AnimationTimer() {
-            private final static long CYCLES_PER_SECOND = 1L << 20;
-            private final long start = startTime;
             @Override
             public void handle(long now) {
-                double elapsed = (double) (now - start) / 1e9;
+                double elapsed = (double) (now - startTime) / 1e9;
                 long cycles = (long) (elapsed * CYCLES_PER_SECOND);
                 gb.runUntil(cycles);
                 view.setImage(ImageConverter.convert(
