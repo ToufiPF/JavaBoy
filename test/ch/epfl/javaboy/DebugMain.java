@@ -27,7 +27,8 @@ public final class DebugMain {
     };
 
     public static final String[] romNamesGames = {
-            "flappyboy.gb", "tetris.gb"
+            "sprite_priority.gb", "flappyboy.gb", "tetris.gb",
+            "2048.gb", "snake.gb"
     };
 
     public static void main(String[] args) throws IOException {
@@ -39,7 +40,7 @@ public final class DebugMain {
             for (int i = 0 ; i < romNames1.length ; ++i)
                 runTest2(new File("Roms/Tests/" + romNamesTests[i]));
              */
-            runTest3(new File("Roms/Games/" + romNamesGames[0]));
+            runTest3(new File("Roms/Games/" + romNamesGames[1]));
         }
     }
 
