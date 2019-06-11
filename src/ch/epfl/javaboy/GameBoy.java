@@ -84,12 +84,16 @@ public final class GameBoy {
     
     /**
      * Returns the LcdController
-     * @return
+     * @return (LcdController) lcd of the GameBoy
      */
     public LcdController lcdController() {
         return lcd;
     }
     
+    /**
+     * Returns the Joypad
+     * @return (Joypad) joypad of the GameBoy
+     */
     public Joypad joypad() {
         return joypad;
     }

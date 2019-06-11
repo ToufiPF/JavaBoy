@@ -102,9 +102,11 @@ public final class LcdController implements Component, Clocked {
         oamRam = new Ram(AddressMap.OAM_RAM_SIZE);
         this.cpu = cpu;
         bus = null;
-        
+
+        vregs.set(Reg.STAT, vregs.get(Reg.STAT) & ~(0b11) | Mode.MODE2.ordinal());
         nextImageBuilder = new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT);
         current = BLANK_IMAGE;
+        
         nextNonIdleCycle = 0;
         isHalted = true;
         winY = 0;
@@ -271,13 +273,13 @@ public final class LcdController implements Component, Clocked {
         LcdImageLine l = BLANK_LINE;
         
         for (int sprite : spritesIntersectingLine(line)) {
-            if (Bits.test(getSpriteData(sprite, SpriteData.ATTRIBUTES), SpriteAttributes.BEHIND_BG) == background) {
+            if (Bits.test(spriteData(sprite, SpriteData.ATTRIBUTES), SpriteAttributes.BEHIND_BG) == background) {
                 int msb_lsb = getMsbLsbSprite(sprite, line);
                 
                 LcdImageLine singleSpriteLine = new LcdImageLine.Builder(LCD_WIDTH)
                         .setBytes(0, Bits.extract(msb_lsb, Byte.SIZE, Byte.SIZE), Bits.clip(Byte.SIZE, msb_lsb))
                         .build();
-                singleSpriteLine = singleSpriteLine.shift(getSpriteData(sprite, SpriteData.X))
+                singleSpriteLine = singleSpriteLine.shift(-spriteData(sprite, SpriteData.X))
                         .mapColors(spritePalette(sprite));
                 l = singleSpriteLine.below(l);
             }
@@ -288,23 +290,23 @@ public final class LcdController implements Component, Clocked {
     /* Sprite Methods */
     
     private int getMsbLsbSprite(int spriteId, int line) {
-        int attributes = getSpriteData(spriteId, SpriteData.ATTRIBUTES);
+        int attributes = spriteData(spriteId, SpriteData.ATTRIBUTES);
         boolean flipH = Bits.test(attributes, SpriteAttributes.FLIP_H);
         boolean flipV = Bits.test(attributes, SpriteAttributes.FLIP_V);
         
-        int trueLine = line - getSpriteData(spriteId, SpriteData.Y);
+        int trueLine = line - spriteData(spriteId, SpriteData.Y);
         if (flipV)
             trueLine = spriteHeight() - 1 - trueLine;
         
-        final int address = AddressMap.TILE_SOURCE[1] + getSpriteData(spriteId, SpriteData.TILE) * BYTES_PER_TILE 
+        final int address = AddressMap.TILE_SOURCE[1] + spriteData(spriteId, SpriteData.TILE) * BYTES_PER_TILE 
                 + 2 * trueLine;
-        int msb = flipH ? Bits.reverse8(read(address + 1)) : read(address + 1);
-        int lsb = flipH ? Bits.reverse8(read(address)) : read(address);
+        int msb = flipH ? read(address + 1) : Bits.reverse8(read(address + 1));
+        int lsb = flipH ? read(address) : Bits.reverse8(read(address));
         
         return Bits.make16(msb, lsb);
     }
     
-    private int getSpriteData(int spriteId, SpriteData data) {
+    private int spriteData(int spriteId, SpriteData data) {
         int info = oamRam.read(spriteId * BYTES_PER_SPRITE + data.ordinal());
         if (data == SpriteData.X)
             return info + OFFSET_SPRITE_X;
@@ -316,7 +318,7 @@ public final class LcdController implements Component, Clocked {
         return vregs.testBit(Reg.LCDC, Lcdc.OBJ_SIZE) ? 2 * TILE_SIZE : TILE_SIZE;
     }
     private byte spritePalette(int spriteId) {
-        return (byte) (Bits.test(getSpriteData(spriteId, SpriteData.ATTRIBUTES), SpriteAttributes.PALETTE) ?
+        return (byte) (Bits.test(spriteData(spriteId, SpriteData.ATTRIBUTES), SpriteAttributes.PALETTE) ?
                 vregs.get(Reg.OBP1) : vregs.get(Reg.OBP0));
     }
     
@@ -327,9 +329,9 @@ public final class LcdController implements Component, Clocked {
 
         int sprites = 0;
         for (int i = 0 ; i < TOTAL_SPRITES && sprites < MAX_SPRITES_PER_LINE ; ++i) {
-            int y = getSpriteData(i, SpriteData.Y);
+            int y = spriteData(i, SpriteData.Y);
             if (y <= line && line < y + height) {
-                int x = getSpriteData(i, SpriteData.X);
+                int x = spriteData(i, SpriteData.X) - OFFSET_SPRITE_X;
                 packedSprites[sprites] = (x << Byte.SIZE) | i;
                 ++sprites;
             }
