@@ -1,6 +1,7 @@
 package ch.epfl.javaboy.gui;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,7 +28,12 @@ public final class Main extends Application {
         if (args.length != 0) {
             launch(args);
         } else {
-            String[] params = { "Roms/Games/tetris.gb" };
+            List<String> listGames = new ArrayList<>();
+            listGames.add("tetris.gb");
+            listGames.add("2048.gb");
+            listGames.add("flappyboy.gb");
+            listGames.add("snake.gb");
+            String[] params = { "Roms/Games/" + listGames.get(3) };
             launch(params);
         }
     }
@@ -37,31 +43,31 @@ public final class Main extends Application {
             System.err.println(s);
         System.exit(1);
     }
-    
-    private final Map<KeyCode, Joypad.Key> mapKeys;
-    
+
+    private Map<KeyCode, Joypad.Key> mapKeys;
+
     private Stage primaryStage;
     private GameBoy gb;
-    
+
     private ImageView view;
     private BorderPane root;
     private Scene scene;
     private MenuBar menuBar;
-    
+
     public Main() {
         mapKeys = new HashMap<>();
         resetDefaultKeys();
         primaryStage = null;
         gb = null;
-        
+
         view = null;
         scene = null;
     }
-    
+
     @Override
     public void start(Stage arg0) throws Exception {
         List<String> args = getParameters().getRaw();
-        
+
         if (args.size() != 1)
             displayErrorAndExit("Argument invalide.", 
                     "Veuillez spécifier exactement un argument : le nom de la rom à lancer.");
@@ -69,14 +75,14 @@ public final class Main extends Application {
         if (!romFile.exists())
             displayErrorAndExit("Argument invalide.",
                     "Le fichier spécifié n'existe pas. (" + romFile.getAbsolutePath() + ").");
-        
+
         gb = new GameBoy(Cartridge.ofFile(romFile));
-        
+
         createScene();
         createMenuBar();
-        
+
         createAnimationTimer(System.nanoTime()).start();
-        
+
         primaryStage = arg0;
         primaryStage.setMinWidth(view.getFitWidth() + 30);
         primaryStage.setMinHeight(view.getFitHeight() + 80);
@@ -85,12 +91,12 @@ public final class Main extends Application {
         primaryStage.show();
         view.requestFocus();
     }
-    
+
     private void createScene() {
         view = new ImageView();
         view.setFitWidth(LcdController.LCD_WIDTH * 3);
         view.setFitHeight(LcdController.LCD_HEIGHT * 3);
-        
+
         view.setOnKeyPressed(e -> {
             if (mapKeys.containsKey(e.getCode()))
                 gb.joypad().keyPressed(mapKeys.get(e.getCode()));
@@ -99,12 +105,12 @@ public final class Main extends Application {
             if (mapKeys.containsKey(e.getCode()))
                 gb.joypad().keyReleased(mapKeys.get(e.getCode()));
         });
-        
+
         root = new BorderPane(view);
-        
+
         scene =  new Scene(root);
     }
-    
+
     private AnimationTimer createAnimationTimer(long startTime) {
         return new AnimationTimer() {
             @Override
@@ -117,39 +123,60 @@ public final class Main extends Application {
             }
         };
     }
-    
+
     private void createMenuBar() {
         menuBar = new MenuBar();
 
         Menu fileMenu = new Menu("File");
+        MenuItem romLoad = new MenuItem("Load Rom");
+        romLoad.setOnAction(e -> {
+
+        });
         MenuItem save = new MenuItem("Save");
+        save.setOnAction(e -> {
+
+        });
         MenuItem load = new MenuItem("Load");
-        MenuItem quit = new MenuItem("Quit");
-        quit.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().addAll(save, load, quit);
-        
-        Menu optionsMenu = new Menu("Options");
-        MenuItem control = new MenuItem("Control");
-        control.setOnAction(e -> {
+        save.setOnAction(e -> {
+
+        });
+        MenuItem quickSave = new MenuItem("QuickSave");
+        quickSave.setOnAction(e -> {
             
         });
-        optionsMenu.getItems().addAll(control);
-        
+        MenuItem quickLoad = new MenuItem("QuickLoad");
+        quickLoad.setOnAction(e -> {
+            
+        });
+        MenuItem quit = new MenuItem("Quit");
+        quit.setOnAction(e -> System.exit(0));
+        fileMenu.getItems().addAll(save, load, quickSave, quickLoad, quit);
+
+        Menu optionsMenu = new Menu("Options");
+        MenuItem controls = new MenuItem("Controls");
+        controls.setOnAction(e -> {
+            WindowJoypadMapping dial = new WindowJoypadMapping(mapKeys);
+            dial.showAndWait();
+            mapKeys = dial.getResult();
+            System.out.println(mapKeys);
+        });
+        optionsMenu.getItems().addAll(controls);
+
         Menu helpMenu = new Menu("Help");
         MenuItem about = new MenuItem("About");
         about.setOnAction(e -> {
-            
+
         });
         helpMenu.getItems().addAll(about);
-        
+
         menuBar.getMenus().addAll(fileMenu, optionsMenu, helpMenu);
-        
+
         root.setTop(menuBar);
     }
-    
+
     private void resetDefaultKeys() {
         mapKeys.clear();
-        
+
         mapKeys.put(KeyCode.Z, Key.UP);
         mapKeys.put(KeyCode.S, Key.DOWN);
         mapKeys.put(KeyCode.Q, Key.LEFT);
@@ -159,5 +186,6 @@ public final class Main extends Application {
         mapKeys.put(KeyCode.A, Key.B);
         mapKeys.put(KeyCode.TAB, Key.SELECT);
         mapKeys.put(KeyCode.ESCAPE, Key.START);
+        mapKeys.put(KeyCode.ENTER, Key.START);
     }
 }
