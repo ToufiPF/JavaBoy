@@ -26,4 +26,8 @@ public interface AddressMap {
     int REGS_LCDC_START = 0xFF40, REGS_LCDC_END = 0xFF4C;
     int REG_BOOT_ROM_DISABLE = 0xFF50;
     int REG_IE = 0xFFFF;
+    
+    // Sounds registers
+    int REGS_SOUND_START = 0xFF10, REGS_SOUND_END = 0xFF27;
+    int REGS_WAVE_TABLE_START = 0xFF30, REGS_WAVE_TABLE_END = 0xFF40;
 }

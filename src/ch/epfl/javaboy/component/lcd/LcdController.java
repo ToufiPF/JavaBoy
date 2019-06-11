@@ -298,8 +298,10 @@ public final class LcdController implements Component, Clocked {
         if (flipV)
             trueLine = spriteHeight() - 1 - trueLine;
         
-        final int address = AddressMap.TILE_SOURCE[1] + spriteData(spriteId, SpriteData.TILE) * BYTES_PER_TILE 
-                + 2 * trueLine;
+        int address = AddressMap.TILE_SOURCE[1] + spriteData(spriteId, SpriteData.TILE) * BYTES_PER_TILE;
+        address += BYTES_PER_TILE_LINE * trueLine;
+        
+        // Si flipH : on inverse pas, car il faut inverser les bits pour afficher normalement
         int msb = flipH ? read(address + 1) : Bits.reverse8(read(address + 1));
         int lsb = flipH ? read(address) : Bits.reverse8(read(address));
         
