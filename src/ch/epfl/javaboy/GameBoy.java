@@ -2,6 +2,7 @@ package ch.epfl.javaboy;
 
 import java.util.Objects;
 
+import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
@@ -16,9 +17,14 @@ import ch.epfl.javaboy.component.memory.RamController;
  * @author Toufi
  */
 public final class GameBoy {
+    
+    public static final long CYCLES_PER_SECOND = 1L << 20;
+    public static final double CYCLES_PER_NANO_SECOND = CYCLES_PER_SECOND / 1e9;
+    
     private final Bus bus;
     private final Cpu cpu;
     private final LcdController lcd;
+    private final Joypad joypad;
     
     private final Timer timer;
     
@@ -42,6 +48,8 @@ public final class GameBoy {
         cpu.attachTo(bus);
         lcd = new LcdController(cpu);
         lcd.attachTo(bus);
+        joypad = new Joypad(cpu);
+        joypad.attachTo(bus);
         
         timer = new Timer(cpu);
         timer.attachTo(bus);
@@ -80,6 +88,10 @@ public final class GameBoy {
      */
     public LcdController lcdController() {
         return lcd;
+    }
+    
+    public Joypad joypad() {
+        return joypad;
     }
     
     /**
