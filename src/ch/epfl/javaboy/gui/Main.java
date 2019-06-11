@@ -96,11 +96,10 @@ public final class Main extends Application {
     
     private AnimationTimer createAnimationTimer(long startTime) {
         return new AnimationTimer() {
-            private static final long CYCLES_PER_SECOND = 1L << 20;
             @Override
             public void handle(long now) {
-                double elapsed = (double) (now - startTime) / 1e9;
-                long cycles = (long) (elapsed * CYCLES_PER_SECOND);
+                long elapsed = now - startTime;
+                long cycles = (long) (elapsed * GameBoy.CYCLES_PER_NANO_SECOND);
                 gb.runUntil(cycles);
                 view.setImage(ImageConverter.convert(
                         gb.lcdController().currentImage()));
@@ -112,9 +111,11 @@ public final class Main extends Application {
         menuBar = new MenuBar();
 
         Menu fileMenu = new Menu("File");
+        MenuItem save = new MenuItem("Save");
+        MenuItem load = new MenuItem("Load");
         MenuItem quit = new MenuItem("Quit");
         quit.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().addAll(quit);
+        fileMenu.getItems().addAll(save, load, quit);
         
         Menu optionsMenu = new Menu("Options");
         MenuItem control = new MenuItem("Control");
