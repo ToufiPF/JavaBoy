@@ -7,6 +7,7 @@ import java.io.IOException;
 import javax.imageio.ImageIO;
 
 import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.Joypad.Key;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.lcd.LcdImage;
@@ -16,7 +17,7 @@ public final class DebugMain {
     private static final int[] COLOR_MAP = new int[] {
             0xFF_FF_FF, 0xD3_D3_D3, 0xA9_A9_A9, 0x00_00_00
     };
-    
+
     public static final String[] romNamesTests = {
             "01-special.gb", "02-interrupts.gb", "03-op sp,hl.gb",
             "04-op r,imm.gb", "05-op rp.gb", "06-ld r,r.gb",
@@ -24,7 +25,7 @@ public final class DebugMain {
             "09-op r,r.gb", "10-bit ops.gb", "11-op a,(hl).gb",
             "instr_timing.gb"
     };
-    
+
     public static final String[] romNamesGames = {
             "flappyboy.gb", "tetris.gb"
     };
@@ -37,8 +38,8 @@ public final class DebugMain {
             /*
             for (int i = 0 ; i < romNames1.length ; ++i)
                 runTest2(new File("Roms/Tests/" + romNamesTests[i]));
-            */
-            runTest2(new File("Roms/Games/" + romNamesGames[1]));
+             */
+            runTest3(new File("Roms/Games/" + romNamesGames[0]));
         }
     }
 
@@ -60,7 +61,7 @@ public final class DebugMain {
     public static void runTest2(File romFile) throws IOException {
         System.err.println("Running Test2 " + romFile.getName() + " :");
         final long cycles = 30_000_000L;
-        
+
         GameBoy gb = new GameBoy(Cartridge.ofFile(romFile));
         gb.runUntil(cycles);
 
@@ -74,6 +75,28 @@ public final class DebugMain {
             System.out.println("|");
         }
         System.out.println("+--------------------+");
+
+        LcdImage li = gb.lcdController().currentImage();
+        BufferedImage i =
+                new BufferedImage(li.width(),
+                        li.height(),
+                        BufferedImage.TYPE_INT_RGB);
+        for (int y = 0; y < li.height(); ++y)
+            for (int x = 0; x < li.width(); ++x)
+                i.setRGB(x, y, COLOR_MAP[li.getColor(x, y)]);
+        ImageIO.write(i, "png", new File("gb.png"));
+    }
+
+    public static void runTest3(File romFile) throws IOException {
+        System.err.println("Running Test3 " + romFile.getName() + " :");
+        final long cycles = 30_000_000L;
+
+        GameBoy gb = new GameBoy(Cartridge.ofFile(romFile));
+        gb.runUntil(cycles);
+        gb.joypad().keyPressed(Key.A);
+        gb.runUntil(cycles + (1L << 20));
+        gb.joypad().keyReleased(Key.A);
+        gb.runUntil(cycles + 2 * (1L << 20));
 
         LcdImage li = gb.lcdController().currentImage();
         BufferedImage i =
