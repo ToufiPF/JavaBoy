@@ -1,9 +1,13 @@
 package ch.epfl.javaboy.gui;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import ch.epfl.javaboy.GameBoy;
+import ch.epfl.javaboy.component.Joypad;
+import ch.epfl.javaboy.component.Joypad.Key;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
 import javafx.animation.AnimationTimer;
@@ -13,6 +17,7 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
@@ -32,7 +37,9 @@ public final class Main extends Application {
             System.err.println(s);
         System.exit(1);
     }
-
+    
+    private final Map<KeyCode, Joypad.Key> mapKeys;
+    
     private Stage primaryStage;
     private GameBoy gb;
     
@@ -42,6 +49,8 @@ public final class Main extends Application {
     private MenuBar menuBar;
     
     public Main() {
+        mapKeys = new HashMap<>();
+        resetDefaultKeys();
         primaryStage = null;
         gb = null;
         
@@ -83,10 +92,12 @@ public final class Main extends Application {
         view.setFitHeight(LcdController.LCD_HEIGHT * 3);
         
         view.setOnKeyPressed(e -> {
-            
+            if (mapKeys.containsKey(e.getCode()))
+                gb.joypad().keyPressed(mapKeys.get(e.getCode()));
         });
         view.setOnKeyReleased(e -> {
-            
+            if (mapKeys.containsKey(e.getCode()))
+                gb.joypad().keyReleased(mapKeys.get(e.getCode()));
         });
         
         root = new BorderPane(view);
@@ -134,5 +145,19 @@ public final class Main extends Application {
         menuBar.getMenus().addAll(fileMenu, optionsMenu, helpMenu);
         
         root.setTop(menuBar);
+    }
+    
+    private void resetDefaultKeys() {
+        mapKeys.clear();
+        
+        mapKeys.put(KeyCode.Z, Key.UP);
+        mapKeys.put(KeyCode.S, Key.DOWN);
+        mapKeys.put(KeyCode.Q, Key.LEFT);
+        mapKeys.put(KeyCode.D, Key.RIGHT);
+
+        mapKeys.put(KeyCode.E, Key.A);
+        mapKeys.put(KeyCode.A, Key.B);
+        mapKeys.put(KeyCode.TAB, Key.SELECT);
+        mapKeys.put(KeyCode.ESCAPE, Key.START);
     }
 }
