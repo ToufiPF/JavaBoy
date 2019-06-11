@@ -1,5 +1,9 @@
 package ch.epfl.javaboy.component;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.cpu.Cpu;
@@ -8,7 +12,9 @@ import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 public final class Joypad implements Component {
 
     public static enum Key {
-        RIGHT, LEFT, UP, DOWN, A, B, SELECT, START
+        RIGHT, LEFT, UP, DOWN, A, B, SELECT, START;
+        public static final List<Key> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final int COUNT = ALL.size();
     }
 
     private final Cpu cpu;
