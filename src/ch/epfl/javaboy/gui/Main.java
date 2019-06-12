@@ -174,7 +174,8 @@ public final class Main extends Application {
         Menu helpMenu = new Menu("Help");
         MenuItem about = new MenuItem("About");
         about.setOnAction(e -> {
-
+            AboutDialog dial = new AboutDialog();
+            dial.showAndWait();
         });
         helpMenu.getItems().addAll(about);
 
