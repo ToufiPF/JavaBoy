@@ -1,14 +1,23 @@
 package ch.epfl.javaboy.gui;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.Reader;
+import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.component.Joypad;
-import ch.epfl.javaboy.component.Joypad.Key;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
 import javafx.animation.AnimationTimer;
@@ -55,8 +64,8 @@ public final class Main extends Application {
     private MenuBar menuBar;
 
     public Main() {
-        mapKeys = new HashMap<>();
-        resetDefaultKeys();
+        mapKeys = null;
+        loadKeyMap();
         primaryStage = null;
         gb = null;
 
@@ -155,10 +164,10 @@ public final class Main extends Application {
         Menu optionsMenu = new Menu("Options");
         MenuItem controls = new MenuItem("Controls");
         controls.setOnAction(e -> {
-            WindowJoypadMapping dial = new WindowJoypadMapping(mapKeys);
+            JoypadMapDialog dial = new JoypadMapDialog(mapKeys);
             dial.showAndWait();
             mapKeys = dial.getResult();
-            System.out.println(mapKeys);
+            saveKeyMap();
         });
         optionsMenu.getItems().addAll(controls);
 
@@ -173,19 +182,67 @@ public final class Main extends Application {
 
         root.setTop(menuBar);
     }
-
-    private void resetDefaultKeys() {
-        mapKeys.clear();
-
-        mapKeys.put(KeyCode.Z, Key.UP);
-        mapKeys.put(KeyCode.S, Key.DOWN);
-        mapKeys.put(KeyCode.Q, Key.LEFT);
-        mapKeys.put(KeyCode.D, Key.RIGHT);
-
-        mapKeys.put(KeyCode.E, Key.A);
-        mapKeys.put(KeyCode.A, Key.B);
-        mapKeys.put(KeyCode.TAB, Key.SELECT);
-        mapKeys.put(KeyCode.ESCAPE, Key.START);
-        mapKeys.put(KeyCode.ENTER, Key.START);
+    
+    private void saveKeyMap() {
+        File save = new File("keymap.ini");
+        try (Writer writer = new FileWriter(save)) {
+            String str = JoypadMapDialog.serializeKeyMap(mapKeys);
+            writer.write(str);
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    
+    private void loadKeyMap() {
+        File load = new File("keymap.ini");
+        try (Reader reader = new FileReader(load)) {
+            StringBuilder b = new StringBuilder();
+            
+            char[] buff = new char[20];
+            int read;
+            while ((read = reader.read(buff)) != -1)
+                b.append(buff, 0, read);
+            
+            mapKeys = JoypadMapDialog.deserializeKeyMap(b.toString());
+            
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            mapKeys = JoypadMapDialog.defaultKeyMap();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            mapKeys = JoypadMapDialog.defaultKeyMap();
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        } 
+    }
+    
+    private boolean saveData(byte[] data, File dest) {
+        try (OutputStream os = new FileOutputStream(dest)) {
+            os.write(data);
+            return true;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    private byte[] loadData(File source) {
+        try (InputStream is = new FileInputStream(source)) {
+            byte[] data = new byte[8192];
+            int read = is.read(data);
+            if (read != data.length)
+                return null;
+            return data;
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        
     }
 }
