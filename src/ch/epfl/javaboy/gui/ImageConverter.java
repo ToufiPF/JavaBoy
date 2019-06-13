@@ -5,8 +5,12 @@ import javafx.scene.image.Image;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
 
+/**
+ * Used to convert an LcdImage to
+ * an JavaFX Image
+ * @author Toufi
+ */
 public final class ImageConverter {
-    
     private static final int[] COLOR_MAP = {
             0xFFFF_FFFF,
             0xFFD3_D3D3,
@@ -14,6 +18,11 @@ public final class ImageConverter {
             0xFF00_0000
     };
     
+    /**
+     * Convert the given LcdImage to a JavaFX Image
+     * @param lcdImg (LcdImage) toConvert
+     * @return (Image) JavaFX Image
+     */
     public static Image convert(LcdImage lcdImg) {
         
         WritableImage img = new WritableImage(lcdImg.width(), lcdImg.height());

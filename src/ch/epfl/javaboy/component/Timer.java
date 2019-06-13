@@ -10,6 +10,10 @@ import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 
+/**
+ * Represents the timer of a GameBoy
+ * @author Toufi
+ */
 public final class Timer implements Component, Clocked {
     
     private static enum RegT implements Register {
@@ -24,6 +28,11 @@ public final class Timer implements Component, Clocked {
     private final RegisterFile<RegT> regTimer;
     private int mainCounter;
     
+    /**
+     * Constructs a new Timer
+     * @param cpu (Cpu) the cpu of the GameBoy,
+     * used to raise interruptions
+     */
     public Timer(Cpu cpu) {
         Objects.requireNonNull(cpu);
         this.cpu = cpu;

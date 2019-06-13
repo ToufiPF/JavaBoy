@@ -9,8 +9,16 @@ import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 
+/**
+ * Represents the Joypad of a GameBoy
+ * @author Toufi
+ */
 public final class Joypad implements Component {
-
+    
+    /**
+     * Keys of the GameBoy
+     * @author Toufi
+     */
     public static enum Key {
         RIGHT, LEFT, UP, DOWN, A, B, SELECT, START;
         public static final List<Key> ALL = Collections.unmodifiableList(Arrays.asList(values()));
@@ -20,7 +28,12 @@ public final class Joypad implements Component {
     private final Cpu cpu;
     private int regP1;
     private int buttonStates;
-
+    
+    /**
+     * Constructs a new Joypad
+     * @param cpu (Cpu) the cpu of the GameBoy,
+     * used to raise interruptions
+     */
     public Joypad(Cpu cpu) {
         this.cpu = cpu;
         regP1 = 0;
@@ -43,12 +56,20 @@ public final class Joypad implements Component {
             refreshP1();
         }
     }
-
+    
+    /**
+     * To call when the given key was pressed
+     * @param key (Joypad.Key) pressed key
+     */
     public void keyPressed(Key key) {
         buttonStates = Bits.set(buttonStates, key.ordinal(), true);
         refreshP1();
     }
 
+    /**
+     * To call when the given key was released
+     * @param key (Joypad.Key) released key
+     */
     public void keyReleased(Key key) {
         buttonStates = Bits.set(buttonStates, key.ordinal(), false);
         refreshP1();

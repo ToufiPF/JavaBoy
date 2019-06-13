@@ -10,8 +10,22 @@ import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Rom;
 
+/**
+ * Represents a GameBoy cartridge
+ * MBC supported : 0, 1
+ * @author Toufi
+ */
 public final class Cartridge implements Component {
-
+    
+    /**
+     * Creates a new Cartridge from the specified file
+     * @param romFile (File) the rom file
+     * @return (Cartridge) the rom cartridge
+     * @throws IOException
+     * if a problem occured when reading the romFile
+     * @throws IllegalArgumentException
+     * if the given rom is invalid or non-supported
+     */
     public static Cartridge ofFile(File romFile) throws IOException {
         try (InputStream is = new FileInputStream(romFile)) {
             byte[] data = readAllBytes(is);
@@ -22,7 +36,7 @@ public final class Cartridge implements Component {
                 return new Cartridge(new MBC0(new Rom(data)));
 
             if (type == 1 || type == 2 || type == 3) {
-                byte byteRam = data[0x149];
+                byte byteRam = data[CARTRIGDE_RAM_SIZE_ADDRESS];
                 int ramSize;
                 switch (byteRam) {
                 case 0:
@@ -63,6 +77,7 @@ public final class Cartridge implements Component {
     }
     
     private final static int CARTRIGDE_TYPE_ADDRESS = 0x147;
+    private final static int CARTRIGDE_RAM_SIZE_ADDRESS = 0x149;
 
     private final Component mbc;
 

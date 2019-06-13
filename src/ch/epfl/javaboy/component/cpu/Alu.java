@@ -10,7 +10,7 @@ import ch.epfl.javaboy.bits.Bits;
  * in charge of additions and substractions
  * @author Toufi
  */
-public final class Alu {
+final class Alu {
 
     /** Flag
      * Represents the flags that an ALU can

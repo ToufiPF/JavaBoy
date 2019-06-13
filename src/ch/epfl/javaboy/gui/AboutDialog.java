@@ -2,8 +2,11 @@ package ch.epfl.javaboy.gui;
 
 import javafx.scene.control.Alert;
 
+/**
+ * Dialog to show when the "about" menu is clicked
+ * @author Toufi
+ */
 public class AboutDialog extends Alert {
-
     public AboutDialog() {
         super(AlertType.INFORMATION);
         setTitle("About Javaboy - GameBoy Emulator");
@@ -16,5 +19,4 @@ public class AboutDialog extends Alert {
         b.append("Made in 2019 by Toufi, for training purpose.\n");
         setContentText(b.toString());
     }
-
 }

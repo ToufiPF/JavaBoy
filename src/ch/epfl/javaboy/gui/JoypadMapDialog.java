@@ -18,8 +18,20 @@ import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.GridPane;
 
+/**
+ * Dialog to show when the "Controls" menu is clicked.
+ * Use Dialog<>.getResult() to get the map after the modifications
+ * Also contains various utilities linked to the mapping
+ * of the Joypad keys
+ * @author Toufi
+ */
 public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
-
+    
+    /**
+     * Serializes the given keyMap
+     * @param keyMap (Map<KeyCode, Joypad.Key>) map to serialize
+     * @return (String) serialized map
+     */
     public static String serializeKeyMap(Map<KeyCode, Joypad.Key> keyMap) {
         StringBuilder b = new StringBuilder();
         for (Map.Entry<KeyCode, Joypad.Key> e : keyMap.entrySet())
@@ -27,7 +39,13 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             .append(e.getValue().toString()).append('\n');
         return b.toString();
     }
-
+    
+    /**
+     * Deserialize the given String and
+     * returns the corresponding keyMap
+     * @param str (String) serialized keyMap
+     * @return (Map<KeyCode, Joypad.Key>) keyMap
+     */
     public static Map<KeyCode, Joypad.Key> deserializeKeyMap(String str) {
         Map<KeyCode, Joypad.Key> keyMap = new HashMap<>();
         String[] lines = str.split("\n");
@@ -46,7 +64,11 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         }
         return keyMap;
     }
-
+    
+    /**
+     * Returns the default keyMap
+     * @return Map<KeyCode, Joypad.Key> default keyMap
+     */
     public static Map<KeyCode, Joypad.Key> defaultKeyMap() {
         Map<KeyCode, Joypad.Key> keyMap = new HashMap<>();
 
@@ -84,6 +106,11 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         return keyCodes;
     }
     
+    /**
+     * Constructs a new JoypadMapDialog,
+     * with the given keyMap
+     * @param keyMap (Map<KeyCode, Joypad.Key>) actual keyMap
+     */
     public JoypadMapDialog(Map<KeyCode, Joypad.Key> keyMap) {
         super();
         // Title

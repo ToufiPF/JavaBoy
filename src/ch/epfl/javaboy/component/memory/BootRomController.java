@@ -6,12 +6,21 @@ import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 
+/**
+ * Represents the Boot Rom controller of 
+ * a GameBoy
+ * @author Toufi
+ */
 public class BootRomController implements Component {
     
     private final Cartridge cart;
     private final Rom bootRom;
     private boolean bootRomDisabled;
     
+    /**
+     * Constructs a new BootromController
+     * @param cartridge (Cartridge)
+     */
     public BootRomController(Cartridge cartridge) {
         Objects.requireNonNull(cartridge);
         cart = cartridge;

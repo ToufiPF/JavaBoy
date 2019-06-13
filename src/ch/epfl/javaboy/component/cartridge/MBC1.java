@@ -8,7 +8,7 @@ import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.Rom;
 
-public final class MBC1 implements Component {
+final class MBC1 implements Component {
     private static final int RAM_ENABLE = 0xA;
 
     private enum Mode { MODE_0, MODE_1 };
@@ -33,7 +33,8 @@ public final class MBC1 implements Component {
         this.romMask = rom.size() - 1;
         this.ramMask = ramSize - 1;
     }
-
+    
+    @Override
     public int read(int address) {
         switch (Bits.extract(checkBits16(address), 13, 3)) {
         case 0: case 1:

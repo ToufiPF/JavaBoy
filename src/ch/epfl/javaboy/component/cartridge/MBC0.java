@@ -6,7 +6,13 @@ import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Rom;
 
-public final class MBC0 implements Component {
+/**
+ * Represents a Cartridge with a 
+ * Memory Bank Controller of type 0
+ * (ie. which contains only Rom)
+ * @author Toufi
+ */
+final class MBC0 implements Component {
     
     public static final int MBC0_SIZE = 32_768;
     

@@ -5,22 +5,47 @@ import java.util.Objects;
 import ch.epfl.javaboy.bits.BitVector;
 import ch.epfl.javaboy.bits.Bits;
 
+/**
+ * Represents a line of an LcdImage
+ * @author Toufi
+ */
 public final class LcdImageLine {
-
+    
+    /**
+     * Builder for LcdImageLine
+     * @author Toufi
+     */
     public static final class Builder {
         private final BitVector.Builder msb, lsb;
-
+        
+        /**
+         * Construct a new LcdImageLine.Builder
+         * @param size (int) width of the LcdImageLine
+         */
         public Builder(int size) {
             msb = new BitVector.Builder(size);
             lsb = new BitVector.Builder(size);
         }
-
+        
+        /**
+         * Sets the two bytes of the LcdImageLine
+         * at the given index
+         * @param index (int) index of the bytes to set
+         * @param ms (int) 8-bits vector msb
+         * @param ls (int) 8-bits vector lsb
+         * @return (Builder) this builder
+         */
         public Builder setBytes(int index, int ms, int ls) {
             msb.setByte(index, ms);
             lsb.setByte(index, ls);
             return this;
         }
         
+        /**
+         * Builds the line and incapacitates
+         * this Builder
+         * @return (LcdImageLine) built line
+         */
         public LcdImageLine build() {
             BitVector m = msb.build();
             BitVector l = lsb.build();
@@ -32,7 +57,12 @@ public final class LcdImageLine {
     private final static byte IDENTITY = (byte) 0b11100100;
 
     private final BitVector msb, lsb, opacity;
-
+    
+    /**
+     * Creates a blank LcdImageLine of
+     * the given size
+     * @param size (int) width of the line
+     */
     public LcdImageLine(int size) {
         msb = new BitVector(size);
         lsb = new BitVector(size);
@@ -43,30 +73,76 @@ public final class LcdImageLine {
         this.lsb = lsb;
         this.opacity = opacity;
     }
-
+    
+    /**
+     * Returns the size of the LcdImageLine
+     * @return (int) line width
+     */
     public int size() {
         return msb.size();
     }
-
+    
+    /**
+     * Returns the BitVector containing
+     * the msbs of the LcdImageLine
+     * @return (BitVector) msbs
+     */
     public BitVector msb() {
         return msb;
     }
+
+    /**
+     * Returns the BitVector containing
+     * the lsbs of the LcdImageLine
+     * @return (BitVector) lsbs
+     */
     public BitVector lsb() {
         return lsb;
     }
+
+    /**
+     * Returns the BitVector containing
+     * the opacity of the LcdImageLine
+     * @return (BitVector) opacity
+     */
     public BitVector opacity() {
         return opacity;
     }
-
+    
+    /**
+     * Returns a new LcdImageLine constructed
+     * by shifting this one of the given distance
+     * @param distance (int) distance of the shift
+     * (positive distance -> left shift ;
+     * negative distance -> right shift)
+     * @return (LcdImageLine) shifted LcdImageLine
+     */
     public LcdImageLine shift(int distance) {
         return new LcdImageLine(msb.shift(distance), lsb.shift(distance), opacity.shift(distance));
     }
-
+    
+    /**
+     * Returns a new LcdImageLine obtained by applying
+     *  wrapped extraction to this line
+     * @param start (int) start of the extraction
+     * @param size (int) size of the extraction
+     * @return (LcdImageLine) wrapped-extracted LcdImageLine
+     */
     public LcdImageLine extractWrapped(int start, int size) {
         return new LcdImageLine(msb.extractWrapped(start, size), 
                 lsb.extractWrapped(start, size), opacity.extractWrapped(start, size));
     }
-
+    
+    /**
+     * Returns a new LcdImageLine obtained by applying
+     * the given color map to this line
+     * @param colors (byte) color map : 
+     * bits 1 & 0 : new color of former color 00 ;
+     * bits 3 & 2 : new color of former color 01 ;
+     * bits 5 & 4 : new color of former color 10 ;
+     * bits 7 & 6 : new color of former color 11
+     * @return (LcdImageLine) color mapped LcdImageLine
+     */
     public LcdImageLine mapColors(byte colors) {
         if (colors == IDENTITY)
             return this;
@@ -93,16 +169,39 @@ public final class LcdImageLine {
         }
         return new LcdImageLine(m, l, opacity);
     }
-
+    
+    /**
+     * Returns the LcdImageLine obtained when placing
+     * this LcdImageLine under the given one
+     * @param above (LcdImageLine) above line
+     * @return (LcdImageLine) superposed LcdImageLine
+     */
     public LcdImageLine below(LcdImageLine above) {
         return below(above, above.opacity);
     }
+    /**
+     * Returns the LcdImageLine obtained when placing
+     * this LcdImageLine under the given one, following
+     * the given opacity vector
+     * @param above (LcdImageLine) above line
+     * @param opacity (BitVector) opacity of the above line
+     * @return (LcdImageLine) superposed LcdImageLine
+     */
     public LcdImageLine below(LcdImageLine above, BitVector opacity) {
         BitVector m = opacity.and(above.msb).or(opacity.not().and(msb));
         BitVector l = opacity.and(above.lsb).or(opacity.not().and(lsb));
         return new LcdImageLine(m, l, this.opacity.or(opacity));
     }
-
+    
+    /**
+     * Returns the LcdImageLine obtained when joining
+     * this LcdImageLine and the given one,
+     * at the given index
+     * @param other (LcdImageLine) line to join with this
+     * @param start (int) index of the jonction
+     * (start bits from this, then (size - start) bits from other) 
+     * @return (LcdImageLine) joined LcdImageLine
+     */
     public LcdImageLine join(LcdImageLine other, int start) {
         if (!(0 <= start && start < size()))
             throw new IllegalArgumentException();

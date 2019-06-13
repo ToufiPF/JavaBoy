@@ -31,6 +31,12 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.Stage;
 
+/**
+ * The Main class of the JavaBoy emulator.
+ * Creates the GameBoy and the gui, 
+ * saves and loads save states and keyMaps...
+ * @author Toufi
+ */
 public final class Main extends Application {
 
     public static void main(String[] args) {
@@ -244,6 +250,5 @@ public final class Main extends Application {
             e.printStackTrace();
             return null;
         }
-        
     }
 }

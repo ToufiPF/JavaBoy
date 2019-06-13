@@ -3,6 +3,7 @@ package ch.epfl.javaboy.component.lcd;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.Bus;
@@ -18,25 +19,28 @@ import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 import ch.epfl.javaboy.component.memory.Ram;
 
+/**
+ * Represents the Lcd controller
+ * of a GameBoy
+ * @author Toufi
+ */
 public final class LcdController implements Component, Clocked {
-    public static enum Reg implements Register {
+    
+    private static enum Reg implements Register {
         LCDC, STAT, SCY, SCX, LY, LYC, DMA, BGP, OBP0, OBP1, WY, WX;
         public static final List<Reg> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static enum Lcdc implements Bit {
+    private static enum Lcdc implements Bit {
         BG, OBJ, OBJ_SIZE, BG_AREA, TILE_SOURCE, WIN, WIN_AREA, LCD_STATUS;
-        public static final List<Lcdc> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static enum Stat implements Bit {
+    private static enum Stat implements Bit {
         MODE0, MODE1, LYC_EQ_LY, INT_MODE0, INT_MODE1, INT_MODE2, INT_LYC;
-        public static final List<Stat> All = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
-    public static enum SpriteAttributes implements Bit {
+    private static enum SpriteAttributes implements Bit {
         UNUSED0, UNUSED1, UNUSED2, UNUSED3, PALETTE, FLIP_H, FLIP_V, BEHIND_BG;
-        public static final List<SpriteAttributes> All = Collections.unmodifiableList(Arrays.asList(values()));
     }
 
     private static enum Mode {
@@ -62,7 +66,7 @@ public final class LcdController implements Component, Clocked {
 
     private static final int TILE_SIZE = 8;
     private static final int NB_TILES = 32;
-    private static final int ALL_TILES_SIZE = 256;
+    private static final int ALL_TILES_SIZE = TILE_SIZE * NB_TILES;
 
     private static final int LY_OVERFLOW = LCD_HEIGHT + 10;
 
@@ -95,8 +99,16 @@ public final class LcdController implements Component, Clocked {
     private int winY;
     private boolean copyRequired;
     private int copyIndex;
-
+    
+    /**
+     * Constructs a new LcdController
+     * @param cpu (Cpu) the cpu of the GameBoy,
+     * used to transmit interruptions
+     * @throws NullPointerException
+     * if cpu is null
+     */
     public LcdController(Cpu cpu) {
+        Objects.requireNonNull(cpu);
         vregs = new RegisterFile<>(Reg.values());
         vRam = new Ram(AddressMap.VIDEO_RAM_SIZE);
         oamRam = new Ram(AddressMap.OAM_RAM_SIZE);
@@ -113,11 +125,50 @@ public final class LcdController implements Component, Clocked {
         copyRequired = false;
         copyIndex = 0;
     }
+    
+    /**
+     * Returns the last LcdImage
+     * this LcdController has computed
+     * @return (LcdImage) last computed LcdImage
+     */
+    public LcdImage currentImage() {
+        return current;
+    }
+    
     @Override
     public void attachTo(Bus bus) {
         this.bus = bus;
         Component.super.attachTo(bus);
     }
+    
+    @Override
+    public int read(int address) {
+        Preconditions.checkBits16(address);
+
+        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
+            return vregs.get(addressToReg(address));
+
+        if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
+            return vRam.read(address - AddressMap.VIDEO_RAM_START);
+
+        if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
+            return oamRam.read(address - AddressMap.OAM_START);
+
+        return NO_DATA;
+    }
+    @Override
+    public void write(int address, int value) {
+        Preconditions.checkBits16(address);
+        Preconditions.checkBits8(value);
+
+        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
+            writeToReg(address, value);
+        else if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
+            vRam.write(address - AddressMap.VIDEO_RAM_START, value);
+        else if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
+            oamRam.write(address - AddressMap.OAM_START, value);
+    }
+
     @Override
     public void cycle(long cycle) {
         if (isHalted && vregs.testBit(Reg.LCDC, Lcdc.LCD_STATUS)) {
@@ -134,7 +185,7 @@ public final class LcdController implements Component, Clocked {
         
         reallyCycle();
     }
-    
+
     private void reallyCycle() {
         int nextLine = vregs.get(Reg.LY);
         Mode nextMode = getMode();
@@ -180,38 +231,6 @@ public final class LcdController implements Component, Clocked {
             copyRequired = false;
             copyIndex = 0;
         }
-    }
-    
-    @Override
-    public int read(int address) {
-        Preconditions.checkBits16(address);
-
-        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
-            return vregs.get(addressToReg(address));
-
-        if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
-            return vRam.read(address - AddressMap.VIDEO_RAM_START);
-
-        if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
-            return oamRam.read(address - AddressMap.OAM_START);
-
-        return NO_DATA;
-    }
-    @Override
-    public void write(int address, int value) {
-        Preconditions.checkBits16(address);
-        Preconditions.checkBits8(value);
-
-        if (AddressMap.REGS_LCDC_START <= address && address < AddressMap.REGS_LCDC_END)
-            writeToReg(address, value);
-        else if (AddressMap.VIDEO_RAM_START <= address && address < AddressMap.VIDEO_RAM_END)
-            vRam.write(address - AddressMap.VIDEO_RAM_START, value);
-        else if (AddressMap.OAM_START <= address && address < AddressMap.OAM_END)
-            oamRam.write(address - AddressMap.OAM_START, value);
-    }
-
-    public LcdImage currentImage() {
-        return current;
     }
 
     private LcdImageLine createNewLine() {

@@ -2,7 +2,7 @@ package ch.epfl.javaboy.component.cpu;
 
 // This is version 3 of Opcode.java, with correct values for additionalCycles.
 
-public enum Opcode {
+enum Opcode {
     // Direct (non-prefixed) opcodes
     ADD_A_B(Kind.DIRECT, Family.ADD_A_R8, 0x80, 1, 1),
     ADD_A_C(Kind.DIRECT, Family.ADD_A_R8, 0x81, 1, 1),
