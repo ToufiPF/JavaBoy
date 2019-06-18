@@ -63,20 +63,21 @@ public final class Main extends Application {
 
     private Stage primaryStage;
     private GameBoy gb;
+    private AnimationTimer timer;
 
     private ImageView view;
     private BorderPane root;
     private Scene scene;
     private MenuBar menuBar;
-
+    
     public Main() {
         mapKeys = null;
         loadKeyMap();
         primaryStage = null;
         gb = null;
 
-        view = null;
-        scene = null;
+        createSceneRootView();
+        createMenuBar();
     }
 
     @Override
@@ -92,11 +93,8 @@ public final class Main extends Application {
                     "Le fichier spécifié n'existe pas. (" + romFile.getAbsolutePath() + ").");
 
         gb = new GameBoy(Cartridge.ofFile(romFile));
-
-        createScene();
-        createMenuBar();
-
-        createAnimationTimer(System.nanoTime()).start();
+        timer = createAnimationTimer(System.nanoTime());
+        timer.start();
 
         primaryStage = arg0;
         primaryStage.setMinWidth(view.getFitWidth() + 30);
@@ -107,7 +105,7 @@ public final class Main extends Application {
         view.requestFocus();
     }
 
-    private void createScene() {
+    private void createSceneRootView() {
         view = new ImageView();
         view.setFitWidth(LcdController.LCD_WIDTH * 3);
         view.setFitHeight(LcdController.LCD_HEIGHT * 3);
@@ -165,7 +163,7 @@ public final class Main extends Application {
         });
         MenuItem quit = new MenuItem("Quit");
         quit.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().addAll(save, load, quickSave, quickLoad, quit);
+        fileMenu.getItems().addAll(romLoad, save, load, quickSave, quickLoad, quit);
 
         Menu optionsMenu = new Menu("Options");
         MenuItem controls = new MenuItem("Controls");
