@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.List;
 
 import ch.epfl.javaboy.Register;
+import ch.epfl.javaboy.RegisterFile;
+import ch.epfl.javaboy.bits.Bits;
 
 public final class Sound {
     public static enum Reg implements Register {

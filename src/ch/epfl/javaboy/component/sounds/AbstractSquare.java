@@ -1,20 +1,12 @@
 package ch.epfl.javaboy.component.sounds;
 
 import ch.epfl.javaboy.bits.Bits;
-import ch.epfl.javaboy.component.Clocked;
-import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.sounds.subcomponent.FrameSequencer;
 import ch.epfl.javaboy.component.sounds.subcomponent.LengthCounter;
 import ch.epfl.javaboy.component.sounds.subcomponent.SoundTimer;
 import ch.epfl.javaboy.component.sounds.subcomponent.VolumeEnvelope;
 
-public abstract class AbstractSquare implements Channel {
-    
-    private static final int[] WAVE_FORM = {
-            0b0000_0001, 0b1000_0001, 
-            0b1000_0111, 0b0111_1110
-    };
-    
+public abstract class AbstractSquare {    
 
     private final FrameSequencer fs;
     private final LengthCounter lc;
