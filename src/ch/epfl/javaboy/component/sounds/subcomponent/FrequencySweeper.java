@@ -7,6 +7,8 @@ import ch.epfl.javaboy.component.sounds.Square1Channel;
 
 public class FrequencySweeper implements Clocked {
     
+    private static final int MAX_FREQUENCY = 2047;
+
     private final RegisterFile<Sound.Reg> regs;
     private SoundTimer timer;
     private boolean enabled;
@@ -14,8 +16,8 @@ public class FrequencySweeper implements Clocked {
     
     public FrequencySweeper(RegisterFile<Sound.Reg> regFile) {
         regs = regFile;
-        timer = SoundTimer.fromPeriodTicks(Square1Channel.getSweepPeriod(regs));
-        enabled = false;
+        timer = SoundTimer.fromPeriodTicks(Square1Channel.readSweepPeriod(regs));
+        enabled = true;
         shadowReg = 0;
     }
     
@@ -24,7 +26,31 @@ public class FrequencySweeper implements Clocked {
         timer.cycle(cycle);
         
         if (timer.enable()) {
-            int addFreq = Square1Channel.getSweepShift(regs);
+            shadowReg = Square1Channel.readWaveFrequency(regs);
+            timer = SoundTimer.fromPeriodTicks(Square1Channel.readSweepPeriod(regs));
+            enabled = Square1Channel.readSweepPeriod(regs) != 0 || Square1Channel.readSweepShift(regs) != 0;
+            if (!enabled)
+                return;
+            
+            int newFreq = computeNewFreq();
+            
+            if (isOverflow(newFreq)) {
+                enabled = false;
+            } else {
+                shadowReg = newFreq;
+                Square1Channel.writeWaveFrequency(regs, shadowReg);
+            }
         }
+    }
+
+    private int computeNewFreq() {
+        int addFreq = shadowReg >>> Square1Channel.readSweepShift(regs);
+        if (Square1Channel.readSweepNegation(regs))
+            addFreq = -addFreq;
+        return shadowReg + addFreq;
+    }
+    
+    private boolean isOverflow(int freq) {
+        return !(0 <= freq && freq <= MAX_FREQUENCY);
     }
 }
