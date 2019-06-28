@@ -1,59 +1,40 @@
 package ch.epfl.javaboy.component.sounds;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
-import ch.epfl.javaboy.bits.Bits;
-import ch.epfl.javaboy.component.sounds.Sound.NR10Bits;
-import ch.epfl.javaboy.component.sounds.Sound.NR11Bits;
-import ch.epfl.javaboy.component.sounds.Sound.NR12Bits;
-import ch.epfl.javaboy.component.sounds.Sound.NR13Bits;
-import ch.epfl.javaboy.component.sounds.Sound.NR14Bits;
-import ch.epfl.javaboy.component.sounds.Sound.Reg;
+import ch.epfl.javaboy.component.Clocked;
+import ch.epfl.javaboy.component.Component;
 
-public class Square1Channel {
+public class Square1Channel implements Component, Clocked {
 
-    public static int readSweepPeriod(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR10), NR10Bits.SWEEP_PERIOD_START, NR10Bits.SWEEP_PERIOD_SIZE);
+    public static enum NR1 implements Register {
+        NR10, NR11, NR12, NR13, NR14;
+        public final static List<NR1> ALL = Collections.unmodifiableList(Arrays.asList(values()));
     }
-    public static boolean readSweepNegation(RegisterFile<Sound.Reg> regs) {
-        return Bits.test(regs.get(Reg.NR10), NR10Bits.SWEEP_NEGATE_BIT);
+
+    private final RegisterFile<NR1> NR1Regs;
+
+    public Square1Channel() {
+        NR1Regs = new RegisterFile<NR1>(NR1.values());
     }
-    public static int readSweepShift(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR10), NR10Bits.SWEEP_SHIFT_START, NR10Bits.SWEEP_SHIFT_SIZE);
+
+    @Override
+    public int read(int address) {
+        if (!(AddressMap.REGS_NR1_START <= address && address < AddressMap.REGS_NR1_END))
+            return NO_DATA;
+        return NR1Regs.get(NR1.ALL.get(address - AddressMap.REGS_NR1_START));
     }
-    
-    public static int readDutyWave(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR11), NR11Bits.DUTY_START, NR11Bits.DUTY_SIZE);
+    @Override
+    public void write(int address, int value) {
+
     }
-    public static int readLengthLoad(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR11), NR11Bits.LENGTH_LOAD_START, NR11Bits.LENGTH_LOAD_SIZE);
-    }
-    
-    public static int readStartingVolume(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR12), NR12Bits.STARTING_VOLUME_START, NR12Bits.STARTING_VOLUME_SIZE);
-    }
-    public static boolean readEnvelopeAddMode(RegisterFile<Sound.Reg> regs) {
-        return Bits.test(regs.get(Reg.NR12), NR12Bits.ENVELOPE_ADD_MODE_BIT);
-    }
-    public static int readEnvelopePeriod(RegisterFile<Sound.Reg> regs) {
-        return Bits.extract(regs.get(Reg.NR12), NR12Bits.ENVELOPE_PERIOD_START, NR12Bits.ENVELOPE_PERIOD_SIZE);
-    }
-    
-    public static int readWaveFrequency(RegisterFile<Sound.Reg> regs) {
-        int msb = Bits.extract(regs.get(Reg.NR14), NR14Bits.FREQUENCY_MSB_START, NR14Bits.FREQUENCY_MSB_SIZE);
-        return (msb << Byte.SIZE) | regs.get(Reg.NR13);
-    }
-    public static void writeWaveFrequency(RegisterFile<Sound.Reg> regs, int waveFreq) {
-        regs.set(Reg.NR13, Bits.clip(Byte.SIZE, waveFreq));
-        int msb = Bits.extract(waveFreq, Byte.SIZE, NR14Bits.FREQUENCY_MSB_SIZE);
-        int prev = Bits.extract(regs.get(Reg.NR14), NR14Bits.FREQUENCY_MSB_SIZE, 
-                Byte.SIZE - NR14Bits.FREQUENCY_MSB_SIZE) << NR14Bits.FREQUENCY_MSB_SIZE;
-        regs.set(Reg.NR14, prev | msb);
-    }
-    
-    public static boolean readLengthEnable(RegisterFile<Sound.Reg> regs) {
-        return Bits.test(regs.get(Reg.NR14), NR14Bits.LENGTH_ENABLE_BIT);
-    }
-    public static boolean readTrigger(RegisterFile<Sound.Reg> regs) {
-        return Bits.test(regs.get(Reg.NR14), NR14Bits.TRIGGER_BIT);
-    }
+    @Override
+    public void cycle(long cycle) {
+
+    }    
 }

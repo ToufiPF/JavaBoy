@@ -12,11 +12,11 @@ public class FrameSequencer implements Clocked {
         return (n & Bits.fullmask(power)) == 0;
     }
 
-    private final SoundTimer timer512;
+    private final Timer timer512;
     private int count512;
     
     public FrameSequencer() {
-        timer512 = SoundTimer.fromFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
+        timer512 = Timer.fromFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
         count512 = MAX_COUNT512;
     }
 

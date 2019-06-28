@@ -4,7 +4,7 @@ import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Clocked;
 
-public class SoundTimer implements Clocked {
+public class Timer implements Clocked {
     
     /**
      * Creates a new SoundTimer with the
@@ -12,10 +12,10 @@ public class SoundTimer implements Clocked {
      * @param freq (int) freq in Hz
      * @return (SoundTimer) the timer
      */
-    public static SoundTimer fromFrequency(int freq) {
+    public static Timer fromFrequency(int freq) {
         Preconditions.checkArgument(freq > 0);
         long period = GameBoy.CYCLES_PER_SECOND / freq;
-        return new SoundTimer(period);
+        return new Timer(period);
     }
     
     /**
@@ -25,9 +25,9 @@ public class SoundTimer implements Clocked {
      * @param cycles (long) period of the timer in cycles
      * @return (SoundTimer) the timer
      */
-    public static SoundTimer fromPeriodCycles(long cycles) {
+    public static Timer fromPeriodCycles(long cycles) {
         Preconditions.checkArgument(cycles > 0);
-        return new SoundTimer(cycles);
+        return new Timer(cycles);
     }
     
     /**
@@ -37,14 +37,14 @@ public class SoundTimer implements Clocked {
      * @param ticks (long) period of the timer in ticks
      * @return (SoundTimer) the timer
      */
-    public static SoundTimer fromPeriodTicks(long ticks) {
-        return new SoundTimer(ticks >> 2);
+    public static Timer fromPeriodTicks(long ticks) {
+        return new Timer(ticks >> 2);
     }
     
     private final long period;
     private long count;
     
-    private SoundTimer(long period) {        
+    private Timer(long period) {        
         this.period = period;
         count = period;
     }
