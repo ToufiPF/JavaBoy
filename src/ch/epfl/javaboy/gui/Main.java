@@ -48,7 +48,7 @@ public final class Main extends Application {
             listGames.add("2048.gb");
             listGames.add("flappyboy.gb");
             listGames.add("snake.gb");
-            String[] params = { "Roms/Games/" + listGames.get(3) };
+            String[] params = { "Roms/Games/" + listGames.get(0) };
             launch(params);
         }
     }
