@@ -17,16 +17,16 @@ public class FrameSequencer implements Clocked {
     
     public FrameSequencer() {
         timer512 = Timer.fromFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
-        count512 = MAX_COUNT512;
+        count512 = 0;
     }
 
     @Override
     public void cycle(long cycle) {
         timer512.cycle(cycle);
         if (timer512.enable()) {
-            --count512;
-            if (count512 < 0)
-                count512 = MAX_COUNT512;
+            ++count512;
+            if (count512 > MAX_COUNT512)
+                count512 = 0;
         }
     }
 
@@ -43,6 +43,6 @@ public class FrameSequencer implements Clocked {
     }
 
     public boolean enable64Hz() {
-        return timer512.enable() && isDivisibleByPowerOf2(count512, 3);
+        return timer512.enable() && count512 == MAX_COUNT512;
     }
 }
