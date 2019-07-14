@@ -1,4 +1,6 @@
 
-bin/
+out/
 
-\.settings/
+\.idea/
+
+JavaBoy\.iml
