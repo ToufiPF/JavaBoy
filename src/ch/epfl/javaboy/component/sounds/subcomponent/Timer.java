@@ -5,48 +5,44 @@ import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Clocked;
 
 public class Timer implements Clocked {
+
     
-    /**
-     * Creates a new SoundTimer with the
-     * given frequency
-     * @param freq (int) freq in Hz
-     * @return (SoundTimer) the timer
-     */
-    public static Timer fromFrequency(int freq) {
-        Preconditions.checkArgument(freq > 0);
-        long period = GameBoy.CYCLES_PER_SECOND / freq;
-        return new Timer(period);
-    }
-    
-    /**
-     * Creates a new SoundTimer with the
-     * given period in cycles (4ticks = 1 cycle).
-     * Frequency of a GameBoy : 2^20 cycles/seconds
-     * @param cycles (long) period of the timer in cycles
-     * @return (SoundTimer) the timer
-     */
-    public static Timer fromPeriodCycles(long cycles) {
-        Preconditions.checkArgument(cycles > 0);
-        return new Timer(cycles);
-    }
-    
-    /**
-     * Creates a new SoundTimer with the
-     * given period in ticks (4ticks = 1 cycle).
-     * Frequency of a GameBoy : 2^22 ticks/seconds
-     * @param ticks (long) period of the timer in ticks
-     * @return (SoundTimer) the timer
-     */
-    public static Timer fromPeriodTicks(long ticks) {
-        return new Timer(ticks >> 2);
-    }
-    
-    private final long period;
+    private long period;
     private long count;
     
-    private Timer(long period) {        
-        this.period = period;
-        count = period;
+    public Timer() {
+        period = 0;
+        count = 0;
+    }
+
+    /**
+     * Sets the frequency of the timer
+     * Frequency of a GameBoy : 2^20 cycles/seconds
+     * @param freq (int) freq in Hz
+     */
+    public void setFrequency(int freq) {
+        Preconditions.checkArgument(freq > 0);
+        period = GameBoy.CYCLES_PER_SECOND / freq;
+    }
+
+    /**
+     * Sets the period in cycles (4ticks = 1 cycle).
+     * Frequency of a GameBoy : 2^20 cycles/seconds
+     * @param cycles (long) period of the timer in cycles
+     */
+    public void setPeriodCycles(long cycles) {
+        Preconditions.checkArgument(cycles > 0);
+        period = cycles;
+    }
+
+    /**
+     * Sets the period in ticks (4ticks = 1 cycle).
+     * Frequency of a GameBoy : 2^22 ticks/seconds
+     * @param ticks (long) period of the timer in ticks
+     */
+    public void setPeriodTicks(long ticks) {
+        Preconditions.checkArgument(ticks > 0);
+        period = ticks >> 2;
     }
     
     @Override
