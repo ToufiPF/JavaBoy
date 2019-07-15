@@ -2,7 +2,7 @@ package ch.epfl.javaboy.component.sounds.subcomponent;
 
 import ch.epfl.javaboy.bits.Bits;
 
-public class SquareWave {
+public class SquareWave implements Ticked {
 
     private static final int[] WAVE_FORM = {
             0b0000_0001, 0b1000_0001, 
@@ -22,6 +22,7 @@ public class SquareWave {
         index = 0;
     }
     
+    @Override
     public void tick() {
         ++index;
         if (index >= Byte.SIZE)
