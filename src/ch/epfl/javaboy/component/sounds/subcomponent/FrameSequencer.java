@@ -12,18 +12,19 @@ public class FrameSequencer implements Clocked {
         return (n & Bits.fullmask(power)) == 0;
     }
 
-    private final Timer timer512;
+    private final Timer timer;
     private int count512;
     
     public FrameSequencer() {
-        timer512 = Timer.fromFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
+        timer = new Timer();
+        timer.setFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
         count512 = 0;
     }
 
     @Override
     public void cycle(long cycle) {
-        timer512.cycle(cycle);
-        if (timer512.enable()) {
+        timer.cycle(cycle);
+        if (timer.enable()) {
             ++count512;
             if (count512 > MAX_COUNT512)
                 count512 = 0;
@@ -31,18 +32,18 @@ public class FrameSequencer implements Clocked {
     }
 
     public boolean enable512Hz() {
-        return timer512.enable();
+        return timer.enable();
     }
 
     public boolean enable256Hz() {
-        return timer512.enable() && isDivisibleByPowerOf2(count512, 1);
+        return timer.enable() && isDivisibleByPowerOf2(count512, 1);
     }
 
     public boolean enable128Hz() {
-        return timer512.enable() && isDivisibleByPowerOf2(count512, 2);
+        return timer.enable() && isDivisibleByPowerOf2(count512, 2);
     }
 
     public boolean enable64Hz() {
-        return timer512.enable() && count512 == MAX_COUNT512;
+        return timer.enable() && count512 == MAX_COUNT512;
     }
 }
