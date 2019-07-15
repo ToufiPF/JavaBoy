@@ -6,14 +6,8 @@ import ch.epfl.javaboy.component.Clocked;
 
 public class Timer implements Clocked {
 
-    
-    private long period;
-    private long count;
-    
-    public Timer() {
-        period = 0;
-        count = 0;
-    }
+    private long period = 0;
+    private long count = 0;
 
     /**
      * Sets the frequency of the timer
