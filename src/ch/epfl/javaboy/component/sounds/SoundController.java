@@ -39,16 +39,18 @@ public final class SoundController implements Component {
     @Override
     public int read(int address) {
         Preconditions.checkBits16(address);
+        int id = address - AddressMap.REGS_NR1_START;
         if (Square1Channel.addressInRegs(address))
-            return square1.read(address);
+            return square1.read(address) | Sound.registerReadingMasks[id];
         if (Square2Channel.addressInRegs(address))
-            return square2.read(address);
+            return square2.read(address) | Sound.registerReadingMasks[id];
         if (WaveChannel.addressInRegs(address))
-            return wave.read(address);
+            return wave.read(address) | Sound.registerReadingMasks[id];
         if (NoiseChannel.addressInRegs(address))
-            return noise.read(address);
+            return noise.read(address) | Sound.registerReadingMasks[id];
         if (addressInNr5(address))
-            return NR5Regs.get(NR5.ALL.get(address - AddressMap.REGS_NR5_START));
+            return NR5Regs.get(NR5.ALL.get(address - AddressMap.REGS_NR5_START))
+                    | Sound.registerReadingMasks[id];
         return NO_DATA;
     }
 

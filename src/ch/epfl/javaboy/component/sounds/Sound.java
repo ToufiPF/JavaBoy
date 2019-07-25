@@ -10,9 +10,6 @@ public final class Sound {
         int ENVELOPE_ADD_MODE_BIT = 3;
         int STARTING_VOLUME_START = 4, STARTING_VOLUME_SIZE = 4;
     }
-    public interface NRX3Bits {
-        int FREQUENCY_LSB_START = 0, FREQUENCY_LSB_SIZE = 8;
-    }
     public interface NRX4Bits {
         int FREQUENCY_MSB_START = 0, FREQUENCY_MSB_SIZE = 3;
         int LENGTH_ENABLE_BIT = 6;
@@ -55,7 +52,15 @@ public final class Sound {
         int CHANEL_LENGHT_STATUSES_START = 0, CHANEL_LENGHT_STATUSES_SIZE = 4;
         int POWER_CONTROL_BIT = 7;
     }
-    
+
+    public static int registerReadingMasks[] = {
+            0x80, 0x3F, 0x00, 0xFF, 0xBF,
+            0xFF, 0x3F, 0x00, 0xFF, 0xBF,
+            0x7F, 0xFF, 0x9F, 0xFF, 0xBF,
+            0xFF, 0xFF, 0x00, 0x00, 0xBF,
+            0x00, 0x00, 0x70
+    };
+
     private Sound() {
     }
 }
