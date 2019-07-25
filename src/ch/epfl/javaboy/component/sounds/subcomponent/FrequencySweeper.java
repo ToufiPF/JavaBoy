@@ -2,6 +2,10 @@ package ch.epfl.javaboy.component.sounds.subcomponent;
 
 public class FrequencySweeper implements Ticked {
 
+    public static boolean overflowCheck(int freq) {
+        return 0 <= freq && freq <= 2047;
+    }
+
     // Regs values
     private int channelFrequency = 0;
     private int sweepPeriod = 0;
@@ -19,8 +23,8 @@ public class FrequencySweeper implements Ticked {
         if (timer <= 0) {
             timer = sweepPeriod;
 
-            if (sweepEnabled && sweepPeriod != 0) {
-            }
+            if (sweepEnabled && sweepPeriod != 0)
+                channelFrequency = computeNewFrequency();
         }
     }
 
@@ -52,8 +56,5 @@ public class FrequencySweeper implements Ticked {
 
     public int getChannelFrequency() {
         return channelFrequency;
-    }
-    public boolean overflowCheck() {
-        return 0 <= channelFrequency && channelFrequency <= 2047;
     }
 }
