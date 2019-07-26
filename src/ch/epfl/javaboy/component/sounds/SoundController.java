@@ -71,6 +71,9 @@ public final class SoundController implements Component, Clocked {
         if (addressInNr5(address))
             return NR5Regs.get(NR5.ALL.get(address - AddressMap.REGS_NR5_START))
                     | Sound.registerReadingMasks[id];
+        if (WaveChannel.addressInWaveRam(address))
+            return channels[2].read(address);
+        
         return NO_DATA;
     }
 
@@ -93,6 +96,9 @@ public final class SoundController implements Component, Clocked {
                 NR5Regs.set(reg, value);
             }
             return;
+        }
+        if (WaveChannel.addressInWaveRam(address)) {
+            channels[2].write(address, value);
         }
         if (controllerEnabled) {
             for (Channel c : channels)

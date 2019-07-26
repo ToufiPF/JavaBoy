@@ -172,19 +172,20 @@ final class Square1Channel implements Channel {
 
     @Override
     public int getOutput() {
-        if (!channelEnabled)
-            return 0;
-        int out = wave.getOutput() ? ve.getVolume() : 0;
-        return (byte) out;
+        return channelEnabled && wave.getOutput() && dacPowered() ? ve.getVolume() : 0;
     }
 
     private void writeChannelFrequency(int freq) {
         int msb = Bits.extract(freq, Byte.SIZE, Sound.NRX4Bits.FREQUENCY_MSB_SIZE);
-        int nr14 = NR1Regs.get(NR1.NR14) & (Bits.fullmask(Byte.SIZE - Sound.NRX4Bits.FREQUENCY_MSB_SIZE) << Sound.NRX4Bits.FREQUENCY_MSB_SIZE);
+        int nr14 = NR1Regs.get(NR1.NR14) & (Bits.fullmask(Byte.SIZE - Sound.NRX4Bits.FREQUENCY_MSB_SIZE)
+                << Sound.NRX4Bits.FREQUENCY_MSB_SIZE);
 
         NR1Regs.set(NR1.NR13, Bits.clip(freq, Byte.SIZE));
         NR1Regs.set(NR1.NR14, nr14 | msb);
 
         period = GameBoy.CYCLES_PER_SECOND / (2048 - freq);
+    }
+    private boolean dacPowered() {
+        return Bits.extract(NR1Regs.get(NR1.NR12), 3, 5) != 0;
     }
 }

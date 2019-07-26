@@ -142,10 +142,7 @@ final class Square2Channel implements Channel {
 
     @Override
     public int getOutput() {
-        if (!channelEnabled)
-            return 0;
-        int out = wave.getOutput() ? ve.getVolume() : 0;
-        return (byte) out;
+        return channelEnabled && wave.getOutput() && dacPowered() ? ve.getVolume() : 0;
     }
 
     @Override
@@ -154,5 +151,9 @@ final class Square2Channel implements Channel {
         timer = period;
         lc.trigger();
         ve.trigger();
+    }
+
+    private boolean dacPowered() {
+        return Bits.extract(NR2Regs.get(NR2.NR22), 3, 5) != 0;
     }
 }
