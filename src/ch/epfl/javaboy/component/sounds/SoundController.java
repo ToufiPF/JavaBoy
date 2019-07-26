@@ -1,18 +1,23 @@
 package ch.epfl.javaboy.component.sounds;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
 import ch.epfl.javaboy.bits.Bits;
+import ch.epfl.javaboy.component.Clocked;
 import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.sounds.subcomponent.FrameSequencer;
 
-public final class SoundController implements Component {
-    
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Mixer;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
+public final class SoundController implements Component, Clocked {
+
     public enum NR5 implements Register {
         NR50, NR51, NR52;
         public final static List<NR5> ALL = Collections.unmodifiableList(Arrays.asList(values()));
@@ -21,19 +26,34 @@ public final class SoundController implements Component {
     public static boolean addressInNr5(int address) {
         return AddressMap.REGS_NR5_START <= address && address < AddressMap.REGS_NR5_END;
     }
-    
-    private final Square1Channel square1;
-    private final Square2Channel square2;
-    private final WaveChannel wave;
-    private final NoiseChannel noise;
+
+    private static boolean extractSoundCountrollerEnabled(int nr52) {
+        return Bits.test(nr52, Sound.NR52Bits.POWER_CONTROL_BIT);
+    }
+
+    private final static int CHANNEL_COUNT = 4;
+
+    private final FrameSequencer fs;
+
+    private final Channel[] channels;
     private final RegisterFile<NR5> NR5Regs;
-    
-    public SoundController() {
-        square1 = new Square1Channel();
-        square2 = new Square2Channel();
-        wave = new WaveChannel();
-        noise = new NoiseChannel();
+
+    private boolean controllerEnabled;
+
+    private final SoundOutput output;
+
+    public SoundController(SoundOutput soundOutput) {
+        fs = new FrameSequencer();
+        channels = new Channel[CHANNEL_COUNT];
+
+        channels[0] = new Square1Channel(fs);
+        channels[1] = new Square2Channel(fs);
+        channels[2] = new WaveChannel(fs);
+        channels[3] = new NoiseChannel(fs);
         NR5Regs = new RegisterFile<>(NR5.values());
+
+        controllerEnabled = false;
+        output = soundOutput;
     }
     
     @Override
@@ -41,13 +61,13 @@ public final class SoundController implements Component {
         Preconditions.checkBits16(address);
         int id = address - AddressMap.REGS_NR1_START;
         if (Square1Channel.addressInRegs(address))
-            return square1.read(address) | Sound.registerReadingMasks[id];
+            return channels[0].read(address) | Sound.registerReadingMasks[id];
         if (Square2Channel.addressInRegs(address))
-            return square2.read(address) | Sound.registerReadingMasks[id];
+            return channels[1].read(address) | Sound.registerReadingMasks[id];
         if (WaveChannel.addressInRegs(address))
-            return wave.read(address) | Sound.registerReadingMasks[id];
+            return channels[2].read(address) | Sound.registerReadingMasks[id];
         if (NoiseChannel.addressInRegs(address))
-            return noise.read(address) | Sound.registerReadingMasks[id];
+            return channels[3].read(address) | Sound.registerReadingMasks[id];
         if (addressInNr5(address))
             return NR5Regs.get(NR5.ALL.get(address - AddressMap.REGS_NR5_START))
                     | Sound.registerReadingMasks[id];
@@ -61,20 +81,62 @@ public final class SoundController implements Component {
 
         if (addressInNr5(address)) {
             NR5 reg = NR5.ALL.get(address - AddressMap.REGS_NR5_START);
-            if (reg == NR5.NR52)
+            if (reg == NR5.NR52) {
+                if (controllerEnabled && !extractSoundCountrollerEnabled(value))
+                    powerOffSoundController();
+                else if (!controllerEnabled && extractSoundCountrollerEnabled(value))
+                    powerOnSoundController();
+
+                controllerEnabled = extractSoundCountrollerEnabled(value);
                 NR5Regs.set(NR5.NR52, (0xF0 & value) | (0xF & NR5Regs.get(NR5.NR52)));
-            else
+            } else if (controllerEnabled) {
                 NR5Regs.set(reg, value);
+            }
             return;
         }
-
-        square1.write(address, value);
-        square2.write(address, value);
-        wave.write(address, value);
-        noise.write(address, value);
+        if (controllerEnabled) {
+            for (Channel c : channels)
+                c.write(address, value);
+        }
     }
 
-    private boolean soundCountrollerEnabled() {
-        return Bits.test(NR5Regs.get(NR5.NR52), Sound.NR52Bits.POWER_CONTROL_BIT);
+    @Override
+    public void cycle(long cycle) {
+        if (!controllerEnabled)
+            return;
+        fs.cycle(cycle);
+
+        for (Channel c : channels)
+            c.cycle(cycle);
+
+        final int selection = NR5Regs.get(NR5.NR51);
+        int left = 0, right = 0;
+        for (int i = 0 ; i < CHANNEL_COUNT ; ++i) {
+            if (Bits.test(selection, CHANNEL_COUNT + i))
+                left += channels[i].getOutput();
+            if (Bits.test(selection, i))
+                right += channels[i].getOutput();
+        }
+        left /= CHANNEL_COUNT;
+        right /= CHANNEL_COUNT;
+
+        final int volumes = NR5Regs.get(NR5.NR50);
+        left *= Bits.extract(volumes, Sound.NR50Bits.LEFT_VOLUME_START, Sound.NR50Bits.LEFT_VOLUME_SIZE) + 1;
+        right *= Bits.extract(volumes, Sound.NR50Bits.RIGHT_VOLUME_START, Sound.NR50Bits.RIGHT_VOLUME_SIZE) + 1;
+
+        output.play(left, right);
+    }
+
+    private void powerOffSoundController() {
+        for (int i = AddressMap.REGS_NR1_START ; i < AddressMap.REGS_NR4_END ; ++i)
+            write(i, 0);
+        NR5Regs.set(NR5.NR50, 0);
+        NR5Regs.set(NR5.NR51, 0);
+    }
+    private void powerOnSoundController() {
+        fs.reset();
+
+        for (Channel c : channels)
+            c.reset();
     }
 }
