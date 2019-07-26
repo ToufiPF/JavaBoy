@@ -1,5 +1,6 @@
 package ch.epfl.javaboy.component.sounds.subcomponent;
 
+import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Clocked;
 
@@ -12,19 +13,25 @@ public class FrameSequencer implements Clocked {
         return (n & Bits.fullmask(power)) == 0;
     }
 
-    private final Timer timer;
+    private final long period;
+    private long timer;
     private int count512;
     
     public FrameSequencer() {
-        timer = new Timer();
-        timer.setFrequency(FRAME_SEQUENCER_BASE_FREQUENCY);
+        period = GameBoy.CYCLES_PER_SECOND / FRAME_SEQUENCER_BASE_FREQUENCY;
+        timer = period;
+        count512 = 0;
+    }
+    public void reset() {
+        timer = period;
         count512 = 0;
     }
 
     @Override
     public void cycle(long cycle) {
-        timer.cycle(cycle);
-        if (timer.enable()) {
+        --timer;
+        if (timer == 0) {
+            timer = period;
             ++count512;
             if (count512 > MAX_COUNT512)
                 count512 = 0;
@@ -32,18 +39,15 @@ public class FrameSequencer implements Clocked {
     }
 
     public boolean enable512Hz() {
-        return timer.enable();
+        return timer == 0;
     }
-
     public boolean enable256Hz() {
-        return timer.enable() && isDivisibleByPowerOf2(count512, 1);
+        return enable512Hz() && isDivisibleByPowerOf2(count512, 1);
     }
-
     public boolean enable128Hz() {
-        return timer.enable() && isDivisibleByPowerOf2(count512, 2);
+        return enable512Hz() && isDivisibleByPowerOf2(count512, 2);
     }
-
     public boolean enable64Hz() {
-        return timer.enable() && count512 == MAX_COUNT512;
+        return enable512Hz() && count512 == MAX_COUNT512;
     }
 }
