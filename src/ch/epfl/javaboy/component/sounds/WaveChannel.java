@@ -9,8 +9,10 @@ import ch.epfl.javaboy.Register;
 import ch.epfl.javaboy.RegisterFile;
 import ch.epfl.javaboy.component.Clocked;
 import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.sounds.subcomponent.FrameSequencer;
 
-final class WaveChannel implements Component, Clocked {
+final class WaveChannel implements Channel {
+
     public static enum NR3 implements Register {
         NR30, NR31, NR32, NR33, NR34;
         public final static List<NR3> ALL = Collections.unmodifiableList(Arrays.asList(values()));
@@ -21,11 +23,17 @@ final class WaveChannel implements Component, Clocked {
     }
     
     private final RegisterFile<NR3> NR3Regs;
+    private final FrameSequencer fs;
     
-    public WaveChannel() {
+    public WaveChannel(FrameSequencer frameSequencer) {
         NR3Regs = new RegisterFile<NR3>(NR3.values());
+        fs = frameSequencer;
     }
-    
+
+    @Override
+    public void reset() {
+
+    }
     @Override
     public void cycle(long cycle) {
         
@@ -37,9 +45,17 @@ final class WaveChannel implements Component, Clocked {
             return NO_DATA;
         return NR3Regs.get(NR3.ALL.get(address - AddressMap.REGS_NR3_START));
     }
-
     @Override
     public void write(int address, int value) {
         
+    }
+    @Override
+    public void trigger() {
+
+    }
+
+    @Override
+    public int getOutput() {
+        return 0;
     }
 }

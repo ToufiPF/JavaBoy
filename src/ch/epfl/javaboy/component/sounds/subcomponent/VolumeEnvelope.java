@@ -41,7 +41,7 @@ public class VolumeEnvelope implements Ticked {
         }
     }
 
-    public void setEnveloppePeriod(int period) {
+    public void setEnvelopePeriod(int period) {
         envPeriod = period;
     }
     public void setIncrementMode(boolean increment) {

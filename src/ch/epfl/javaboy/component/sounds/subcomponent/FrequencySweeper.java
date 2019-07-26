@@ -2,8 +2,8 @@ package ch.epfl.javaboy.component.sounds.subcomponent;
 
 public class FrequencySweeper implements Ticked {
 
-    public static boolean overflowCheck(int freq) {
-        return 0 <= freq && freq <= 2047;
+    public static boolean isOverflow(int freq) {
+        return !(0 <= freq && freq <= 2047);
     }
 
     // Regs values

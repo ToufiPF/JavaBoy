@@ -14,6 +14,10 @@ public class SquareWave implements Ticked {
     private int wave = WAVE_FORM[0];
     private int index = 0;
 
+    public void reset() {
+        index = 0;
+    }
+
     @Override
     public void tick() {
         ++index;
