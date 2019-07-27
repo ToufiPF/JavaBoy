@@ -10,6 +10,8 @@ import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
+import ch.epfl.javaboy.component.sounds.AudioSystemSoundOutput;
+import ch.epfl.javaboy.component.sounds.SoundController;
 
 /**
  * Represents a GameBoy
@@ -24,6 +26,7 @@ public final class GameBoy {
     private final Bus bus;
     private final Cpu cpu;
     private final LcdController lcd;
+    private final SoundController soundController;
     private final Joypad joypad;
     
     private final Timer timer;
@@ -39,7 +42,7 @@ public final class GameBoy {
     /**
      * Constructs a new GameBoy with
      * the given cartridge
-     * @param cardridge
+     * @param cartridge
      */
     public GameBoy(Cartridge cartridge) {
         Objects.requireNonNull(cartridge);
@@ -48,6 +51,8 @@ public final class GameBoy {
         cpu.attachTo(bus);
         lcd = new LcdController(cpu);
         lcd.attachTo(bus);
+        soundController = new SoundController(new AudioSystemSoundOutput());
+        soundController.attachTo(bus);
         joypad = new Joypad(cpu);
         joypad.attachTo(bus);
         
@@ -89,7 +94,13 @@ public final class GameBoy {
     public LcdController lcdController() {
         return lcd;
     }
-    
+
+    /**
+     * Returns the SoundController
+     * @return (SoundController) sound of the GameBoy
+     */
+    public SoundController soundController() { return soundController; }
+
     /**
      * Returns the Joypad
      * @return (Joypad) joypad of the GameBoy

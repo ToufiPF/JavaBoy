@@ -1,4 +1,4 @@
-package ch.epfl.javaboy.gui;
+package ch.epfl.javaboy.component.sounds;
 
 import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.Preconditions;

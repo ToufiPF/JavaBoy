@@ -73,7 +73,7 @@ public final class SoundController implements Component, Clocked {
                     | Sound.registerReadingMasks[id];
         if (WaveChannel.addressInWaveRam(address))
             return channels[2].read(address);
-        
+
         return NO_DATA;
     }
 
@@ -138,11 +138,13 @@ public final class SoundController implements Component, Clocked {
             write(i, 0);
         NR5Regs.set(NR5.NR50, 0);
         NR5Regs.set(NR5.NR51, 0);
+        output.stop();
     }
     private void powerOnSoundController() {
         fs.reset();
 
         for (Channel c : channels)
             c.reset();
+        output.start();
     }
 }
