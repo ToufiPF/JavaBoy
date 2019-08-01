@@ -1,6 +1,7 @@
 package ch.epfl.javaboy.component.sounds.subcomponent;
 
 import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.bits.Bits;
 
 public class ProgrammableWave implements Ticked {
 
@@ -27,7 +28,8 @@ public class ProgrammableWave implements Ticked {
             position = 0;
         boolean low = (position & 1) == 1;
 
-        sample = low ? (waveRam[position / 2] & 0x0F) : (waveRam[position / 2] & 0xF0);
+        sample = low ? Bits.extract(waveRam[position / 2], 0, 4)
+                : Bits.extract(waveRam[position / 2], 4, 4);
     }
 
     public void setVolumeCode(int volumeCode) {

@@ -11,6 +11,7 @@ import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
 import ch.epfl.javaboy.component.sounds.AudioSystemSoundOutput;
+import ch.epfl.javaboy.component.sounds.DebugSoundOutput;
 import ch.epfl.javaboy.component.sounds.SoundController;
 
 /**
@@ -130,6 +131,7 @@ public final class GameBoy {
         while (simulatedCycles < cycle) {
             timer.cycle(simulatedCycles);
             lcd.cycle(simulatedCycles);
+            soundController.cycle(simulatedCycles);
             cpu.cycle(simulatedCycles);
             ++simulatedCycles;
         }

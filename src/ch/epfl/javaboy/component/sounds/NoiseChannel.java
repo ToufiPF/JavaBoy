@@ -54,6 +54,11 @@ final class NoiseChannel implements Channel {
     }
 
     @Override
+    public boolean isEnabled() {
+        return false;
+    }
+
+    @Override
     public int getOutput() {
         return 0;
     }

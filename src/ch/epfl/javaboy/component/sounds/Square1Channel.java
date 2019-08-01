@@ -175,6 +175,11 @@ final class Square1Channel implements Channel {
         return channelEnabled && wave.getOutput() && dacPowered() ? ve.getVolume() : 0;
     }
 
+    @Override
+    public boolean isEnabled() {
+        return channelEnabled;
+    }
+
     private void writeChannelFrequency(int freq) {
         int msb = Bits.extract(freq, Byte.SIZE, Sound.NRX4Bits.FREQUENCY_MSB_SIZE);
         int nr14 = NR1Regs.get(NR1.NR14) & (Bits.fullmask(Byte.SIZE - Sound.NRX4Bits.FREQUENCY_MSB_SIZE)

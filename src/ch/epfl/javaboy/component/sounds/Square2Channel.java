@@ -146,6 +146,11 @@ final class Square2Channel implements Channel {
     }
 
     @Override
+    public boolean isEnabled() {
+        return channelEnabled;
+    }
+
+    @Override
     public void trigger() {
         channelEnabled = true;
         timer = period;

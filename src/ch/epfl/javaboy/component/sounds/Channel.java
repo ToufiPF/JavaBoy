@@ -6,6 +6,7 @@ import ch.epfl.javaboy.component.Component;
 public interface Channel extends Component, Clocked {
     void reset();
     void trigger();
+    boolean isEnabled();
 
     int getOutput();
 }

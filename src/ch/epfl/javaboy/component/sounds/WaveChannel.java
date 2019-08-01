@@ -127,6 +127,11 @@ final class WaveChannel implements Channel {
     }
 
     @Override
+    public boolean isEnabled() {
+        return channelEnabled;
+    }
+
+    @Override
     public int getOutput() {
         return channelEnabled && dacPowered() ? wave.getOutput() : 0;
     }

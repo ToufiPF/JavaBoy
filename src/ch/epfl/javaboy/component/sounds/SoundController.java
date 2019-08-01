@@ -85,12 +85,13 @@ public final class SoundController implements Component, Clocked {
         if (addressInNr5(address)) {
             NR5 reg = NR5.ALL.get(address - AddressMap.REGS_NR5_START);
             if (reg == NR5.NR52) {
-                if (controllerEnabled && !extractSoundCountrollerEnabled(value))
-                    powerOffSoundController();
-                else if (!controllerEnabled && extractSoundCountrollerEnabled(value))
-                    powerOnSoundController();
-
                 controllerEnabled = extractSoundCountrollerEnabled(value);
+
+                if (controllerEnabled)
+                    powerOnSoundController();
+                else
+                    powerOffSoundController();
+
                 NR5Regs.set(NR5.NR52, (0xF0 & value) | (0xF & NR5Regs.get(NR5.NR52)));
             } else if (controllerEnabled) {
                 NR5Regs.set(reg, value);
@@ -114,6 +115,9 @@ public final class SoundController implements Component, Clocked {
 
         for (Channel c : channels)
             c.cycle(cycle);
+
+        writeChannelStatuses(channels[0].isEnabled(), channels[1].isEnabled(),
+                channels[2].isEnabled(), channels[3].isEnabled());
 
         final int selection = NR5Regs.get(NR5.NR51);
         int left = 0, right = 0;
@@ -146,5 +150,14 @@ public final class SoundController implements Component, Clocked {
         for (Channel c : channels)
             c.reset();
         output.start();
+    }
+
+    private void writeChannelStatuses(boolean square1, boolean square2, boolean wave, boolean noise) {
+        int statuses = Bits.set(0, 0, square1);
+        statuses = Bits.set(statuses, 1, square2);
+        statuses = Bits.set(statuses, 2, wave);
+        statuses = Bits.set(statuses, 3, noise);
+
+        NR5Regs.set(NR5.NR52, (NR5Regs.get(NR5.NR52) & 0xF0) | statuses);
     }
 }
