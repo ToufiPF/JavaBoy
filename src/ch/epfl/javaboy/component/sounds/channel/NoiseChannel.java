@@ -1,4 +1,4 @@
-package application.sound.channel;
+package ch.epfl.javaboy.component.sounds.channel;
 
 public class NoiseChannel extends BaseChannel {
 
@@ -8,42 +8,30 @@ public class NoiseChannel extends BaseChannel {
     private float divRatio;
 
     public Envelope getVolume() {
-
         return volume;
     }
-
     public void setVolume(Envelope volume) {
-
         this.volume = volume;
     }
 
     public int getShiftFreq() {
-
         return shiftFreq;
     }
-
     public void setShiftFreq(int shiftFreq) {
-
         this.shiftFreq = shiftFreq;
     }
 
     public int getCounterStep() {
-
         return counterStep;
     }
-
     public void setCounterStep(int counterStep) {
-
         this.counterStep = counterStep;
     }
 
     public float getDivRatio() {
-
         return divRatio;
     }
-
     public void setDivRatio(float divRatio) {
-
         this.divRatio = divRatio;
     }
 

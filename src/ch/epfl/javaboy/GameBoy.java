@@ -1,7 +1,5 @@
 package ch.epfl.javaboy;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
@@ -10,9 +8,10 @@ import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
-import ch.epfl.javaboy.component.sounds.AudioSystemSoundOutput;
-import ch.epfl.javaboy.component.sounds.DebugSoundOutput;
 import ch.epfl.javaboy.component.sounds.SoundController;
+
+import javax.sound.sampled.LineUnavailableException;
+import java.util.Objects;
 
 /**
  * Represents a GameBoy
@@ -52,9 +51,13 @@ public final class GameBoy {
         cpu.attachTo(bus);
         lcd = new LcdController(cpu);
         lcd.attachTo(bus);
-        AudioSystemSoundOutput soundOutput = new AudioSystemSoundOutput();
-        soundController = new SoundController(soundOutput);
-        soundController.attachTo(bus);
+        try {
+            soundController = new SoundController();
+            soundController.attachTo(bus);
+            soundController.startAudio();
+        } catch (LineUnavailableException e) {
+            throw new RuntimeException(e);
+        }
         joypad = new Joypad(cpu);
         joypad.attachTo(bus);
         

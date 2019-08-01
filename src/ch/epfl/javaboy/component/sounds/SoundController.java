@@ -1,23 +1,48 @@
-package application.sound;
+package ch.epfl.javaboy.component.sounds;
+
+import ch.epfl.javaboy.*;
+import ch.epfl.javaboy.component.Clocked;
+import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.sounds.channel.Envelope;
+import ch.epfl.javaboy.component.sounds.channel.NoiseChannel;
+import ch.epfl.javaboy.component.sounds.channel.SquareWaveChannel;
+import ch.epfl.javaboy.component.sounds.channel.WaveChannel;
 
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.DataLine;
 import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
+import java.util.Arrays;
+import java.util.List;
 
-import application.MemoryMap;
-import application.sound.channel.Envelope;
-import application.sound.channel.NoiseChannel;
-import application.sound.channel.SquareWaveChannel;
-import application.sound.channel.WaveChannel;
+public class SoundController implements Component, Clocked {
 
-public class Sound {
+    private enum NR implements Register {
+        NR10, NR11, NR12, NR13, NR14,
+        UNUSED20, NR21, NR22, NR23, NR24,
+        NR30, NR31, NR32, NR33, NR34,
+        UNUSED40, NR41, NR42, NR43, NR44,
+        NR50, NR51, NR52;
+        public static final List<NR> ALL = Arrays.asList(values());
+    }
+
+    private static final int[] WAVE_RAM_DEFAULT_VALUES = {
+            0x84, 0x40, 0x43, 0xAA, 0x2D, 0x78, 0x92, 0x3C,
+            0x60, 0x59, 0x59, 0xB0, 0x34, 0xB8, 0x2E, 0xDA
+    };
+
+    private static final int[] NR_REGS_MASKS = {
+            0x80, 0x3F, 0x00, 0xFF, 0xBF,
+            0xFF, 0x3F, 0x00, 0xFF, 0xBF,
+            0x7F, 0xFF, 0x9F, 0xFF, 0xBF,
+            0xFF, 0xFF, 0x00, 0x00, 0xBF,
+            0x00, 0x00, 0x70
+    };
 
     private static final int SAMPLE_RATE = 44100;
-    private static final int SAMPLE_SIZE = 2;
-
-    private MemoryMap mmu = MemoryMap.getInstance();
+    private static final int SAMPLES_PER_FRAME = 2;
+    private static final AudioFormat FORMAT = new AudioFormat(SAMPLE_RATE, Byte.SIZE, SAMPLES_PER_FRAME, true, false);
+    private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / SAMPLE_RATE);
 
     private SourceDataLine line;
 
@@ -32,19 +57,12 @@ public class Sound {
     private WaveChannel channel3;
     private NoiseChannel channel4;
 
-    public Sound() throws LineUnavailableException {
+    private final RegisterFile<NR> regs;
+    private final int[] waveRam;
 
-        AudioFormat format = new AudioFormat(AudioFormat.Encoding.PCM_SIGNED, SAMPLE_RATE, 8, 2, 2, SAMPLE_RATE, true);
-        DataLine.Info info = new DataLine.Info(SourceDataLine.class, format);
-
-        if (!AudioSystem.isLineSupported(info)) {
-
-            System.out.println("Line matching " + info + " is not supported.");
-        }
-
-        line = (SourceDataLine) AudioSystem.getLine(info);
-
-        line.open(format);
+    public SoundController() throws LineUnavailableException {
+        line = AudioSystem.getSourceDataLine(FORMAT);
+        line.open(FORMAT);
 
         soundBufferMix = new byte[line.getBufferSize()];
 
@@ -52,10 +70,42 @@ public class Sound {
         channel2 = new SquareWaveChannel();
         channel3 = new WaveChannel();
         channel4 = new NoiseChannel();
+
+        regs = new RegisterFile<>(NR.values());
+        waveRam = Arrays.copyOf(WAVE_RAM_DEFAULT_VALUES, WAVE_RAM_DEFAULT_VALUES.length);
+    }
+
+    @Override
+    public int read(int address) {
+        Preconditions.checkBits16(address);
+        if (AddressMap.REGS_NR_START <= address && address < AddressMap.REGS_NR_END) {
+            final int id = address - AddressMap.REGS_NR_START;
+            return regs.get(NR.ALL.get(id)) | NR_REGS_MASKS[id];
+        }
+        if (AddressMap.REGS_WAVE_TABLE_START <= address && address < AddressMap.REGS_WAVE_TABLE_END)
+            return waveRam[address - AddressMap.REGS_WAVE_TABLE_START];
+
+        return NO_DATA;
+    }
+    @Override
+    public void write(int address, int value) {
+        Preconditions.checkBits16(address);
+        Preconditions.checkBits8(value);
+
+        if (AddressMap.REGS_NR_START <= address && address < AddressMap.REGS_NR_END) {
+            final NR reg = NR.ALL.get(address - AddressMap.REGS_NR_START);
+            if (reg == NR.NR52)
+                regs.set(NR.NR52, (value & 0xF0) | (regs.get(NR.NR52) & 0xF));
+            else
+                regs.set(reg, value);
+        }
+        else if (AddressMap.REGS_WAVE_TABLE_START <= address && address < AddressMap.REGS_WAVE_TABLE_END) {
+            final int id = address - AddressMap.REGS_WAVE_TABLE_START;
+            waveRam[id] = value;
+        }
     }
 
     public void startAudio() {
-
         soundTimer = 0;
         line.start();
 
@@ -66,26 +116,22 @@ public class Sound {
         soundBufferIndex = 0;
     }
 
-    public void updateSound(int cyclesRun) {
-
+    @Override
+    public void cycle(long cycle) {
         initChannels();
 
-        soundTimer += cyclesRun;
-        if (soundTimer >= 93)
+        ++soundTimer;
+        if (soundTimer >= PERIOD)
         {
-            soundTimer -= 93;
-
-            if (mmu.isAllSoundOn()) {
-
+            soundTimer -= PERIOD;
+            if (isSoundControllerOn()) {
                 updateChannel1();
                 updateChannel2();
                 updateChannel3();
                 updateChannel4();
 
                 mixSound();
-
             } else {
-
                 soundBufferMix[(soundBufferIndex * 2)] = (byte) 0;
                 soundBufferMix[(soundBufferIndex * 2) + 1] = (byte) 0;
             }
@@ -93,28 +139,15 @@ public class Sound {
             soundBufferIndex++;
 
             if (soundBufferIndex >= 750) {
-
-                int numSamples;
-
-                if (1500 >= line.available() * 2) {
-
-                    numSamples = line.available() * 2;
-                } else {
-
-                    numSamples = 1500;
-                }
+                int numSamples = Math.min(1500, line.available() * 2);
 
                 line.write(soundBufferMix, 0, numSamples);
-
                 soundBufferIndex = 0;
             }
-
         }
-
     }
 
     private void initChannels() {
-
         initChannel1();
         initChannel2();
         initChannel3();
@@ -122,17 +155,15 @@ public class Sound {
     }
 
     private void initChannel1() {
+        if (isChannelTriggered(1)) {
+            removeChannelTrigger(1);
+            setChannelOn(1);
 
-        if (mmu.isSoundReset(1)) {
-
-            mmu.removeSoundReset(1);
-            mmu.setSoundOn(1);
-
-            int nr10 = mmu.io[mmu.NR10];
-            int nr11 = mmu.io[mmu.NR11];
-            int nr12 = mmu.io[mmu.NR12];
-            int nr13 = mmu.io[mmu.NR13];
-            int nr14 = mmu.io[mmu.NR14];
+            int nr10 = regs.get(NR.NR10);
+            int nr11 = regs.get(NR.NR11);
+            int nr12 = regs.get(NR.NR12);
+            int nr13 = regs.get(NR.NR13);
+            int nr14 = regs.get(NR.NR14);
 
             channel1.setOn(true);
             channel1.setWaveDuty((nr11 >> 6) & 0x3);
@@ -153,7 +184,7 @@ public class Sound {
 
             Envelope volume = new Envelope();
             volume.setBase((nr12 >> 4) & 0x0F);
-            volume.setDirection((nr12 & 0x8) == 0x8 ? 1 : 0);
+            volume.setIncrementing((nr12 & 0x8) == 0x8);
             volume.setStepLength((nr12 & 0x7) * SAMPLE_RATE / 64);
             volume.setIndex(volume.getStepLength());
             channel1.setVolume(volume);
@@ -162,13 +193,9 @@ public class Sound {
             channel1.setSweepIndex(channel1.getSweepLength());
             channel1.setSweepDirection((nr10 & 0x8) == 0x8 ? -1 : 1);
             channel1.setSweepShift(nr10 & 0x7);
-
         }
-
     }
-
     private void updateChannel1() {
-
         if (channel1.isOn())
         {
             channel1.incIndex();
@@ -183,7 +210,7 @@ public class Sound {
                 if (channel1.getLength() == 0)
                 {
                     channel1.setOn(false);
-                    mmu.setSoundOff(1);
+                    setChannelOff(1);
                 }
             }
 
@@ -200,12 +227,12 @@ public class Sound {
                     if (channel1.getGbFreq() > 2047)
                     {
                         channel1.setOn(false);
-                        mmu.setSoundOff(1);
+                        setChannelOff(1);
                     }
                     else
                     {
-                        mmu.io[mmu.NR13] = channel1.getGbFreq() & 0xFF;
-                        mmu.io[mmu.NR14] = (mmu.io[mmu.NR14] & 0xF8) | ((channel1.getGbFreq() >> 8) & 0x7);
+                        regs.set(NR.NR13, channel1.getGbFreq() & 0xFF);
+                        regs.set(NR.NR14, (regs.get(NR.NR14) & 0xF8) | ((channel1.getGbFreq() >> 8) & 0x7));
                         channel1.setFreq(131072 / (2048 - channel1.getGbFreq()));
                     }
                 }
@@ -214,16 +241,14 @@ public class Sound {
     }
 
     private void initChannel2() {
+        if (isChannelTriggered(2)) {
+            removeChannelTrigger(2);
+            setChannelOn(2);
 
-        if (mmu.isSoundReset(2)) {
-
-            mmu.removeSoundReset(2);
-            mmu.setSoundOn(2);
-
-            int nr21 = mmu.io[mmu.NR21];
-            int nr22 = mmu.io[mmu.NR22];
-            int nr23 = mmu.io[mmu.NR23];
-            int nr24 = mmu.io[mmu.NR24];
+            int nr21 = regs.get(NR.NR21);
+            int nr22 = regs.get(NR.NR22);
+            int nr23 = regs.get(NR.NR23);
+            int nr24 = regs.get(NR.NR24);
 
             channel2.setOn(true);
             channel2.setWaveDuty((nr21 >> 6) & 0x3);
@@ -244,16 +269,13 @@ public class Sound {
 
             Envelope volume = new Envelope();
             volume.setBase((nr22 >> 4) & 0x0F);
-            volume.setDirection((nr22 & 0x8) == 0x8 ? 1 : 0);
+            volume.setIncrementing((nr22 & 0x8) == 0x8);
             volume.setStepLength((nr22 & 0x7) * SAMPLE_RATE / 64);
             volume.setIndex(volume.getStepLength());
             channel2.setVolume(volume);
-
         }
     }
-
     private void updateChannel2() {
-
         if (channel2.isOn())
         {
             channel2.incIndex();
@@ -268,27 +290,24 @@ public class Sound {
                 if (channel2.getLength() == 0)
                 {
                     channel2.setOn(false);
-                    mmu.setSoundOff(2);
+                    setChannelOff(2);
                 }
             }
-
             channel2.getVolume().handleSweep();
         }
     }
 
     private void initChannel3() {
-
-        if (mmu.isSoundReset(3)) {
-
-            mmu.removeSoundReset(3);
-            mmu.setSoundOn(3);
+        if (isChannelTriggered(3)) {
+            removeChannelTrigger(3);
+            setChannelOn(3);
 
             channel3.setIndex(0);
 
-            int nr30 = mmu.io[mmu.NR30];
-            int nr31 = mmu.io[mmu.NR31];
-            int nr33 = mmu.io[mmu.NR33];
-            int nr34 = mmu.io[mmu.NR34];
+            int nr30 = regs.get(NR.NR30);
+            int nr31 = regs.get(NR.NR31);
+            int nr33 = regs.get(NR.NR33);
+            int nr34 = regs.get(NR.NR34);
 
             channel3.setOn((nr30 & 0x80) == 0x80);
 
@@ -296,10 +315,10 @@ public class Sound {
             channel3.setFreq(65536 / (2048 - freqX3));
 
             int[] channel3wav = new int[32];
-            for (int i = 0x30; i < 0x40; i++)
+            for (int i = 0; i < AddressMap.REGS_WAVE_TABLE_END - AddressMap.REGS_WAVE_TABLE_START; i++)
             {
-                channel3wav[((i - 0x30) * 2)] = ((mmu.io[i] >> 4) & 0xF);
-                channel3wav[((i - 0x30) * 2) + 1] = (mmu.io[i] & 0xF);
+                channel3wav[i * 2] = (waveRam[i] >> 4) & 0xF;
+                channel3wav[i * 2 + 1] = waveRam[i] & 0xF;
             }
             channel3.setWave(channel3wav);
 
@@ -313,28 +332,24 @@ public class Sound {
                 channel3.setCount(false);
             }
         }
-
     }
-
     private void updateChannel3() {
-
         if (channel3.isOn())
         {
-            int nr30 = mmu.io[mmu.NR30];
-            int nr32 = mmu.io[mmu.NR32];
+            int nr30 = regs.get(NR.NR30);
+            int nr32 = regs.get(NR.NR32);
 
             channel3.incIndex();
 
             int i = (int) ((32 * channel3.getFreq() * channel3.getIndex()) / 44100) % 32;
             int value = channel3.getWave()[i];
             if ((nr32 & 0x60) != 0x0) {
-
                 value >>= (((nr32 >> 5) & 0x3) - 1);
             } else {
-
                 value = 0;
             }
             value <<= 1;
+
             if ((nr30 & 0x80) == 0x80) {
                 soundBuffer[2][soundBufferIndex] = (byte) (value - 0xF);
             } else {
@@ -347,23 +362,21 @@ public class Sound {
                 if (channel3.getLength() == 0)
                 {
                     channel3.setOn(false);
-                    mmu.setSoundOff(3);
+                    setChannelOff(3);
                 }
             }
         }
     }
 
     private void initChannel4() {
+        if (isChannelTriggered(4)) {
+            removeChannelTrigger(4);
+            setChannelOn(4);
 
-        if (mmu.isSoundReset(4)) {
-
-            mmu.removeSoundReset(4);
-            mmu.setSoundOn(4);
-
-            int nr41 = mmu.io[mmu.NR41];
-            int nr42 = mmu.io[mmu.NR42];
-            int nr43 = mmu.io[mmu.NR43];
-            int nr44 = mmu.io[mmu.NR44];
+            int nr41 = regs.get(NR.NR41);
+            int nr42 = regs.get(NR.NR42);
+            int nr43 = regs.get(NR.NR43);
+            int nr44 = regs.get(NR.NR44);
 
             channel4.setOn(true);
             channel4.setIndex(0);
@@ -380,7 +393,7 @@ public class Sound {
 
             Envelope volume = new Envelope();
             volume.setBase((nr42 >> 4) & 0x0F);
-            volume.setDirection((nr42 & 0x8) == 0x48 ? 1 : 0);
+            volume.setIncrementing((nr42 & 0x8) == 0x8);
             volume.setStepLength((nr42 & 0x7) * SAMPLE_RATE / 64);
             volume.setIndex(volume.getStepLength());
             channel4.setVolume(volume);
@@ -392,11 +405,8 @@ public class Sound {
                 channel4.setDivRatio(0.5F);
             channel4.setFreq((int) (524288 / channel4.getDivRatio()) >> channel4.getShiftFreq());
         }
-
     }
-
     private void updateChannel4() {
-
         if (channel4.isOn())
         {
             channel4.incIndex();
@@ -420,41 +430,26 @@ public class Sound {
                 if (channel4.getLength() == 0)
                 {
                     channel4.setOn(false);
-                    mmu.setSoundOff(4);
+                    setChannelOff(4);
                 }
             }
-
             channel4.getVolume().handleSweep();
-
         }
     }
 
     private void mixSound() {
-
         int leftAmp = 0;
-        if (mmu.isSoundToTerminal(1, 2) && channel1.isOn())
-            leftAmp += soundBuffer[0][soundBufferIndex];
-        if (mmu.isSoundToTerminal(2, 2) && channel2.isOn())
-            leftAmp += soundBuffer[1][soundBufferIndex];
-        if (mmu.isSoundToTerminal(3, 2) && channel3.isOn())
-            leftAmp += soundBuffer[2][soundBufferIndex];
-        if (mmu.isSoundToTerminal(4, 2) && channel4.isOn())
-            leftAmp += soundBuffer[3][soundBufferIndex];
-
-        leftAmp *= mmu.getSoundLevel(2);
+        for (int i = 0 ; i < 4 ; ++i)
+            if (isChannelToLeftMixer(i + 1) && channel1.isOn())
+                leftAmp += soundBuffer[i][soundBufferIndex];
+        leftAmp *= getLeftSoundLevel();
         leftAmp /= 4;
 
         int rightAmp = 0;
-        if (mmu.isSoundToTerminal(1, 1) && channel1.isOn())
-            rightAmp += soundBuffer[0][soundBufferIndex];
-        if (mmu.isSoundToTerminal(2, 1) && channel2.isOn())
-            rightAmp += soundBuffer[1][soundBufferIndex];
-        if (mmu.isSoundToTerminal(3, 1) && channel3.isOn())
-            rightAmp += soundBuffer[2][soundBufferIndex];
-        if (mmu.isSoundToTerminal(4, 1) && channel4.isOn())
-            rightAmp += soundBuffer[3][soundBufferIndex];
-
-        rightAmp *= mmu.getSoundLevel(1);
+        for (int i = 0 ; i < 4 ; ++i)
+            if (isChannelToRightMixer(i + 1) && channel1.isOn())
+                rightAmp += soundBuffer[i][soundBufferIndex];
+        rightAmp *= getRightSoundLevel();
         rightAmp /= 4;
 
         if (leftAmp > 127)
@@ -468,7 +463,79 @@ public class Sound {
 
         soundBufferMix[(soundBufferIndex * 2)] = (byte) leftAmp;
         soundBufferMix[(soundBufferIndex * 2) + 1] = (byte) rightAmp;
-
     }
 
+    private boolean isSoundControllerOn() {
+        return (regs.get(NR.NR52) & 0x80) != 0;
+    }
+
+    private boolean isChannelTriggered(int channelNum) {
+        NR reg;
+        switch (channelNum) {
+            case 1:
+                reg = NR.NR14;
+                break;
+            case 2:
+                reg = NR.NR24;
+                break;
+            case 3:
+                reg = NR.NR34;
+                break;
+            case 4:
+                reg = NR.NR44;
+                break;
+            default:
+                throw new IllegalStateException();
+        }
+        return (regs.get(reg) & 0x80) != 0;
+    }
+    private void removeChannelTrigger(int channelNum) {
+        NR reg;
+        switch (channelNum) {
+            case 1:
+                reg = NR.NR14;
+                break;
+            case 2:
+                reg = NR.NR24;
+                break;
+            case 3:
+                reg = NR.NR34;
+                break;
+            case 4:
+                reg = NR.NR44;
+                break;
+            default:
+                throw new IllegalStateException();
+        }
+        regs.set(reg, regs.get(reg) & 0x7F);
+    }
+
+    private boolean isChannelOn(int channelNum) {
+        int mask = 1 << (channelNum - 1);
+        return (regs.get(NR.NR52) & mask) != 0;
+    }
+    private void setChannelOn(int channelNum) {
+        int mask = 1 << (channelNum - 1);
+        regs.set(NR.NR52, regs.get(NR.NR52) | mask);
+    }
+    private void setChannelOff(int channelNum) {
+        int mask = 1 << (channelNum - 1);
+        regs.set(NR.NR52, regs.get(NR.NR52) & ~mask);
+    }
+
+    private boolean isChannelToLeftMixer(int channelNum) {
+        int mask = 4 + channelNum - 1;
+        return (regs.get(NR.NR51) & mask) != 0;
+    }
+    private boolean isChannelToRightMixer(int channelNum) {
+        int mask = channelNum - 1;
+        return (regs.get(NR.NR51) & mask) != 0;
+    }
+
+    private int getLeftSoundLevel() {
+        return (regs.get(NR.NR50) >> 4) & 0x7;
+    }
+    private int getRightSoundLevel() {
+        return regs.get(NR.NR50) & 0x7;
+    }
 }
