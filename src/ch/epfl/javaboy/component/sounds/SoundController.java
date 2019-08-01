@@ -109,9 +109,10 @@ public final class SoundController implements Component, Clocked {
 
     @Override
     public void cycle(long cycle) {
+        fs.cycle(cycle);
+
         if (!controllerEnabled)
             return;
-        fs.cycle(cycle);
 
         for (Channel c : channels)
             c.cycle(cycle);
@@ -138,8 +139,13 @@ public final class SoundController implements Component, Clocked {
     }
 
     private void powerOffSoundController() {
-        for (int i = AddressMap.REGS_NR1_START ; i < AddressMap.REGS_NR4_END ; ++i)
-            write(i, 0);
+        for (int i = AddressMap.REGS_NR1_START ; i < AddressMap.REGS_NR4_END ; ++i) {
+            // Lengths should be conserved
+            if (i == 0xff11|| i == 0xff16 || i == 0xff20)
+                write(i, read(i) & 0b0011_1111);
+            else if (i != 0xff1b)
+                write(i, 0);
+        }
         NR5Regs.set(NR5.NR50, 0);
         NR5Regs.set(NR5.NR51, 0);
         output.stop();

@@ -10,10 +10,11 @@ import javax.sound.sampled.LineUnavailableException;
 import javax.sound.sampled.SourceDataLine;
 
 public class AudioSystemSoundOutput implements SoundOutput {
-    private final static int SAMPLE_RATE = 22050;
-    private final static int BUFFER_SIZE = 1024;
+    private final static int SAMPLE_RATE = 44100;
+    private final static int CHANNELS = 2;
+    private final static int BUFFER_SIZE = 2048;
 
-    private final static AudioFormat FORMAT = new AudioFormat(AudioFormat.Encoding.PCM_UNSIGNED, SAMPLE_RATE, 8, 2, 2, SAMPLE_RATE, false);
+    private final static AudioFormat FORMAT = new AudioFormat(SAMPLE_RATE, Byte.SIZE, CHANNELS, false, false);
 
     private SourceDataLine line;
     private byte[] buffer;
@@ -25,13 +26,14 @@ public class AudioSystemSoundOutput implements SoundOutput {
     public AudioSystemSoundOutput() {
         line = null;
         buffer = null;
-        period = (int) (GameBoy.CYCLES_PER_SECOND / FORMAT.getSampleRate());
+        period = (int) (GameBoy.CYCLES_PER_SECOND / SAMPLE_RATE);
         timer = period;
         i = 0;
     }
 
     @Override
     public void start() {
+        buffer = new byte[BUFFER_SIZE];
         if (line != null) {
             System.err.println("Sound already started !");
             return;
@@ -40,11 +42,10 @@ public class AudioSystemSoundOutput implements SoundOutput {
         try {
             line = AudioSystem.getSourceDataLine(FORMAT);
             line.open(FORMAT, BUFFER_SIZE);
+            line.start();
         } catch (LineUnavailableException e) {
-            e.printStackTrace();
+            throw new RuntimeException(e);
         }
-        line.start();
-        buffer = new byte[line.getBufferSize()];
     }
     @Override
     public void stop() {
@@ -55,6 +56,7 @@ public class AudioSystemSoundOutput implements SoundOutput {
         System.out.println("Stopping sound.");
         line.drain();
         line.stop();
+        line.close();
         line = null;
         timer = period;
         buffer = null;
@@ -62,6 +64,8 @@ public class AudioSystemSoundOutput implements SoundOutput {
     }
     @Override
     public void play(int left, int right) {
+        if (line == null)
+            throw new IllegalStateException();
         --timer;
         if (timer <= 0) {
             timer = period;
@@ -69,7 +73,7 @@ public class AudioSystemSoundOutput implements SoundOutput {
             Preconditions.checkBits8(right);
             buffer[i++] = (byte) left;
             buffer[i++] = (byte) right;
-            if (i > BUFFER_SIZE / 2) {
+            if (i >= BUFFER_SIZE / 4) {
                 line.write(buffer, 0, i);
                 i = 0;
             }

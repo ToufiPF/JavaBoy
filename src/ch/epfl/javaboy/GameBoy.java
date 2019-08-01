@@ -52,7 +52,8 @@ public final class GameBoy {
         cpu.attachTo(bus);
         lcd = new LcdController(cpu);
         lcd.attachTo(bus);
-        soundController = new SoundController(new AudioSystemSoundOutput());
+        AudioSystemSoundOutput soundOutput = new AudioSystemSoundOutput();
+        soundController = new SoundController(soundOutput);
         soundController.attachTo(bus);
         joypad = new Joypad(cpu);
         joypad.attachTo(bus);
