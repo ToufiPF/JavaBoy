@@ -35,8 +35,8 @@ public class SoundController implements Component, Clocked {
             0x00, 0x00, 0x70
     };
 
-    private static final int CYCLES_PER_SECOND = 44100;
-    private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / CYCLES_PER_SECOND);
+    private static final int TICKS_PER_SECOND = 44100;
+    private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / TICKS_PER_SECOND);
 
     private SquareWaveChannel channel1;
     private SquareWaveChannel channel2;
@@ -162,7 +162,7 @@ public class SoundController implements Component, Clocked {
             if ((nr14 & 0x40) == 0x40) // stop output at length
             {
                 channel1.setCount(true);
-                channel1.setLength(((64 - (nr11 & 0x3F)) * CYCLES_PER_SECOND) / 256);
+                channel1.setLength(((64 - (nr11 & 0x3F)) * TICKS_PER_SECOND) / 256);
             }
             else
             {
@@ -172,11 +172,11 @@ public class SoundController implements Component, Clocked {
             Envelope volume = new Envelope();
             volume.setBase((nr12 >> 4) & 0x0F);
             volume.setIncrementing((nr12 & 0x8) == 0x8);
-            volume.setStepLength((nr12 & 0x7) * CYCLES_PER_SECOND / 64);
+            volume.setStepLength((nr12 & 0x7) * TICKS_PER_SECOND / 64);
             volume.setIndex(volume.getStepLength());
             channel1.setVolume(volume);
 
-            channel1.setSweepLength(((nr10 >> 4) & 0x7) * CYCLES_PER_SECOND / 128);
+            channel1.setSweepLength(((nr10 >> 4) & 0x7) * TICKS_PER_SECOND / 128);
             channel1.setSweepIndex(channel1.getSweepLength());
             channel1.setSweepDirection((nr10 & 0x8) == 0x8 ? -1 : 1);
             channel1.setSweepShift(nr10 & 0x7);
@@ -187,7 +187,7 @@ public class SoundController implements Component, Clocked {
         {
             channel1.incIndex();
 
-            int i = (int) ((32 * channel1.getFreq() * channel1.getIndex()) / CYCLES_PER_SECOND) % 32;
+            int i = (int) ((32 * channel1.getFreq() * channel1.getIndex()) / TICKS_PER_SECOND) % 32;
             int value = channel1.getWave()[i];
             soundBuffer[0] = (byte) (value * channel1.getVolume().getBase());
 
@@ -247,7 +247,7 @@ public class SoundController implements Component, Clocked {
             if ((nr24 & 0x40) == 0x40) // stop output at length
             {
                 channel2.setCount(true);
-                channel2.setLength(((64 - (nr21 & 0x3F)) * CYCLES_PER_SECOND) / 256);
+                channel2.setLength(((64 - (nr21 & 0x3F)) * TICKS_PER_SECOND) / 256);
             }
             else
             {
@@ -257,7 +257,7 @@ public class SoundController implements Component, Clocked {
             Envelope volume = new Envelope();
             volume.setBase((nr22 >> 4) & 0x0F);
             volume.setIncrementing((nr22 & 0x8) == 0x8);
-            volume.setStepLength((nr22 & 0x7) * CYCLES_PER_SECOND / 64);
+            volume.setStepLength((nr22 & 0x7) * TICKS_PER_SECOND / 64);
             volume.setIndex(volume.getStepLength());
             channel2.setVolume(volume);
         }
@@ -267,7 +267,7 @@ public class SoundController implements Component, Clocked {
         {
             channel2.incIndex();
 
-            int i = (int) ((32 * channel2.getFreq() * channel2.getIndex()) / CYCLES_PER_SECOND) % 32;
+            int i = (int) ((32 * channel2.getFreq() * channel2.getIndex()) / TICKS_PER_SECOND) % 32;
             int value = channel2.getWave()[i];
             soundBuffer[1] = (byte) (value * channel2.getVolume().getBase());
 
@@ -312,7 +312,7 @@ public class SoundController implements Component, Clocked {
             if ((nr34 & 0x40) == 0x40) // stop output at length
             {
                 channel3.setCount(true);
-                channel3.setLength((256 - nr31) * CYCLES_PER_SECOND / 256);
+                channel3.setLength((256 - nr31) * TICKS_PER_SECOND / 256);
             }
             else
             {
@@ -370,7 +370,7 @@ public class SoundController implements Component, Clocked {
             if ((nr44 & 0x40) == 0x40) // stop output at length
             {
                 channel4.setCount(true);
-                channel4.setLength((64 - (nr41 & 0x3F)) * CYCLES_PER_SECOND / 256);
+                channel4.setLength((64 - (nr41 & 0x3F)) * TICKS_PER_SECOND / 256);
             }
             else
             {
@@ -380,7 +380,7 @@ public class SoundController implements Component, Clocked {
             Envelope volume = new Envelope();
             volume.setBase((nr42 >> 4) & 0x0F);
             volume.setIncrementing((nr42 & 0x8) == 0x8);
-            volume.setStepLength((nr42 & 0x7) * CYCLES_PER_SECOND / 64);
+            volume.setStepLength((nr42 & 0x7) * TICKS_PER_SECOND / 64);
             volume.setIndex(volume.getStepLength());
             channel4.setVolume(volume);
 
@@ -400,12 +400,12 @@ public class SoundController implements Component, Clocked {
             byte value;
             if (channel4.getCounterStep() == 1)
             {
-                int i = (int) ((channel4.getFreq() * channel4.getIndex()) / CYCLES_PER_SECOND) % 0x7F;
+                int i = (int) ((channel4.getFreq() * channel4.getIndex()) / TICKS_PER_SECOND) % 0x7F;
                 value = (byte) ((NoiseChannel.noise7[i >> 3] >> (i & 0x7)) & 0x1);
             }
             else
             {
-                int i = (int) ((channel4.getFreq() * channel4.getIndex()) / CYCLES_PER_SECOND) % 0x7FFF;
+                int i = (int) ((channel4.getFreq() * channel4.getIndex()) / TICKS_PER_SECOND) % 0x7FFF;
                 value = (byte) ((NoiseChannel.noise15[i >> 3] >> (i & 0x7)) & 0x1);
             }
             soundBuffer[3] = (byte) ((value * 2 - 1) * channel4.getVolume().getBase());
