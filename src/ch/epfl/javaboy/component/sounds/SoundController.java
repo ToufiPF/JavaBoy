@@ -35,7 +35,7 @@ public class SoundController implements Component, Clocked {
             0x00, 0x00, 0x70
     };
 
-    private static final int TICKS_PER_SECOND = 44100;
+    private static final int TICKS_PER_SECOND = AudioLineSoundOutput.SAMPLE_RATE;
     private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / TICKS_PER_SECOND);
 
     private SquareWaveChannel channel1;
