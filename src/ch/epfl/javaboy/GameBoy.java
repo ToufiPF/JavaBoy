@@ -8,6 +8,7 @@ import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
+import ch.epfl.javaboy.component.sounds.AudioLineSoundOutput;
 import ch.epfl.javaboy.component.sounds.SoundController;
 
 import javax.sound.sampled.LineUnavailableException;
@@ -51,13 +52,15 @@ public final class GameBoy {
         cpu.attachTo(bus);
         lcd = new LcdController(cpu);
         lcd.attachTo(bus);
+        AudioLineSoundOutput soundOutput;
         try {
-            soundController = new SoundController();
-            soundController.attachTo(bus);
-            soundController.startAudio();
+            soundOutput = new AudioLineSoundOutput();
         } catch (LineUnavailableException e) {
             throw new RuntimeException(e);
         }
+        soundController = new SoundController(soundOutput);
+        soundController.attachTo(bus);
+        soundController.startAudio();
         joypad = new Joypad(cpu);
         joypad.attachTo(bus);
         
