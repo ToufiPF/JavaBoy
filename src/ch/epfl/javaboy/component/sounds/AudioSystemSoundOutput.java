@@ -73,8 +73,9 @@ public class AudioSystemSoundOutput implements SoundOutput {
             Preconditions.checkBits8(right);
             buffer[i++] = (byte) left;
             buffer[i++] = (byte) right;
-            if (i >= BUFFER_SIZE / 4) {
-                line.write(buffer, 0, i);
+            if (i >= BUFFER_SIZE / 2) {
+                int samples = Math.min(i, line.available());
+                line.write(buffer, 0, samples);
                 i = 0;
             }
         }
