@@ -1,5 +1,7 @@
 package ch.epfl.javaboy.component.sounds;
 
+import ch.epfl.javaboy.bits.AtomicWrappingInteger;
+
 import javax.sound.sampled.AudioFormat;
 import javax.sound.sampled.AudioSystem;
 import javax.sound.sampled.LineUnavailableException;
@@ -19,7 +21,7 @@ public class AudioLineSoundOutput implements SoundOutput {
 
     private byte[][] buffers;
     private int[] indexes;
-    int sel;
+    private final AtomicWrappingInteger sel;
 
     private Thread playback;
 
@@ -37,6 +39,8 @@ public class AudioLineSoundOutput implements SoundOutput {
             }
         });
         playback.setDaemon(true);
+        buffers = new byte[BUFFER_COUNT][BUFFER_SIZE];
+        sel = new AtomicWrappingInteger(BUFFER_COUNT);
     }
 
     @Override
@@ -46,9 +50,8 @@ public class AudioLineSoundOutput implements SoundOutput {
         playback.start();
 
 
-        buffers = new byte[BUFFER_COUNT][BUFFER_SIZE];
         indexes = new int[] { 0, 0 };
-        sel = 0;
+        sel.set(0);
     }
 
     @Override
@@ -61,19 +64,20 @@ public class AudioLineSoundOutput implements SoundOutput {
 
     @Override
     public void play(int left, int right) {
-        if (!playing || indexes[sel] >= BUFFER_SIZE) {
-            //System.err.println("Buffer Overflow !");
+        if (!playing)
             return;
-        }
-        buffers[sel][indexes[sel]++] = (byte) left;
-        buffers[sel][indexes[sel]++] = (byte) right;
+        
+        int selec = sel.get();
+        if (indexes[selec] >= BUFFER_SIZE)
+            return;
+
+        buffers[selec][indexes[selec]++] = (byte) left;
+        buffers[selec][indexes[selec]++] = (byte) right;
     }
 
     private void emptyBuffer() {
-        int prev = sel;
-        ++sel;
-        if (sel == BUFFER_COUNT)
-            sel = 0;
+        int prev = sel.get();
+        sel.incrementAndGet();
         line.write(buffers[prev], 0, indexes[prev]);
         indexes[prev] = 0;
     }
