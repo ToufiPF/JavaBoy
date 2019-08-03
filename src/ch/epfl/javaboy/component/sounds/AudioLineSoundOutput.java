@@ -66,7 +66,7 @@ public class AudioLineSoundOutput implements SoundOutput {
     public void play(int left, int right) {
         if (!playing)
             return;
-        
+
         int selec = sel.get();
         if (indexes[selec] >= BUFFER_SIZE)
             return;

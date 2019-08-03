@@ -398,13 +398,10 @@ public class SoundController implements Component, Clocked {
             channel4.incIndex();
 
             byte value;
-            if (channel4.getCounterStep() == 1)
-            {
+            if (channel4.getCounterStep() == 1) {
                 int i = (int) ((channel4.getFreq() * channel4.getIndex()) / TICKS_PER_SECOND) % 0x7F;
                 value = (byte) ((NoiseChannel.noise7[i >> 3] >> (i & 0x7)) & 0x1);
-            }
-            else
-            {
+            } else {
                 int i = (int) ((channel4.getFreq() * channel4.getIndex()) / TICKS_PER_SECOND) % 0x7FFF;
                 value = (byte) ((NoiseChannel.noise15[i >> 3] >> (i & 0x7)) & 0x1);
             }
