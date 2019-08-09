@@ -191,11 +191,9 @@ public class SoundController implements Component, Clocked {
             int value = channel1.getWave()[i];
             soundBuffer[0] = (byte) (value * channel1.getVolume().getBase());
 
-            if (channel1.isCount() && channel1.getLength() > 0)
-            {
+            if (channel1.isCount() && channel1.getLength() > 0) {
                 channel1.decLength();
-                if (channel1.getLength() == 0)
-                {
+                if (channel1.getLength() == 0) {
                     channel1.setOn(false);
                     setChannelOff(1);
                 }
@@ -203,21 +201,17 @@ public class SoundController implements Component, Clocked {
 
             channel1.getVolume().handleSweep();
 
-            if (channel1.getSweepIndex() > 0 && channel1.getSweepLength() > 0)
-            {
+            if (channel1.getSweepIndex() > 0 && channel1.getSweepLength() > 0) {
                 channel1.decSweepIndex();
 
-                if (channel1.getSweepIndex() == 0)
-                {
+                if (channel1.getSweepIndex() == 0) {
                     channel1.setSweepIndex(channel1.getSweepLength());
                     channel1.setGbFreq(channel1.getGbFreq() + (channel1.getGbFreq() >> channel1.getSweepShift()) * channel1.getSweepDirection());
-                    if (channel1.getGbFreq() > 2047)
-                    {
+                    if (channel1.getGbFreq() > 2047) {
                         channel1.setOn(false);
                         setChannelOff(1);
                     }
-                    else
-                    {
+                    else {
                         regs.set(NR.NR13, channel1.getGbFreq() & 0xFF);
                         regs.set(NR.NR14, (regs.get(NR.NR14) & 0xF8) | ((channel1.getGbFreq() >> 8) & 0x7));
                         channel1.setFreq(131072 / (2048 - channel1.getGbFreq()));
@@ -503,11 +497,11 @@ public class SoundController implements Component, Clocked {
     }
 
     private boolean isChannelToLeftMixer(int channelNum) {
-        int mask = 4 + channelNum - 1;
+        int mask = 1 << (4 + channelNum - 1);
         return (regs.get(NR.NR51) & mask) != 0;
     }
     private boolean isChannelToRightMixer(int channelNum) {
-        int mask = channelNum - 1;
+        int mask = 1 << (channelNum - 1);
         return (regs.get(NR.NR51) & mask) != 0;
     }
 
