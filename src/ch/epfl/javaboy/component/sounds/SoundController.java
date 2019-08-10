@@ -3,11 +3,9 @@ package ch.epfl.javaboy.component.sounds;
 import ch.epfl.javaboy.*;
 import ch.epfl.javaboy.component.Clocked;
 import ch.epfl.javaboy.component.Component;
-import ch.epfl.javaboy.component.sounds.channel.Envelope;
-import ch.epfl.javaboy.component.sounds.channel.NoiseChannel;
-import ch.epfl.javaboy.component.sounds.channel.SquareWaveChannel;
-import ch.epfl.javaboy.component.sounds.channel.WaveChannel;
+import ch.epfl.javaboy.component.sounds.channel.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -38,10 +36,11 @@ public class SoundController implements Component, Clocked {
     private static final int TICKS_PER_SECOND = AudioLineSoundOutput.SAMPLE_RATE;
     private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / TICKS_PER_SECOND);
 
-    private SquareWaveChannel channel1;
-    private SquareWaveChannel channel2;
-    private WaveChannel channel3;
-    private NoiseChannel channel4;
+    private final SquareWaveChannel channel1;
+    private final SquareWaveChannel channel2;
+    private final WaveChannel channel3;
+    private final NoiseChannel channel4;
+    private final ArrayList<BaseChannel> channelList;
 
     private final RegisterFile<NR> regs;
     private final int[] waveRam;
@@ -64,6 +63,11 @@ public class SoundController implements Component, Clocked {
         channel2 = new SquareWaveChannel();
         channel3 = new WaveChannel();
         channel4 = new NoiseChannel();
+        channelList = new ArrayList<>(4);
+        channelList.add(channel1);
+        channelList.add(channel2);
+        channelList.add(channel3);
+        channelList.add(channel4);
 
         regs = new RegisterFile<>(NR.values());
         waveRam = Arrays.copyOf(WAVE_RAM_DEFAULT_VALUES, WAVE_RAM_DEFAULT_VALUES.length);
@@ -417,14 +421,14 @@ public class SoundController implements Component, Clocked {
     private void mixSound() {
         int leftAmp = 0;
         for (int i = 0 ; i < 4 ; ++i)
-            if (isChannelToLeftMixer(i + 1) && channel1.isOn())
+            if (isChannelToLeftMixer(i + 1) && channelList.get(i).isOn())
                 leftAmp += soundBuffer[i];
         leftAmp *= getLeftSoundLevel();
         leftAmp /= 4;
 
         int rightAmp = 0;
         for (int i = 0 ; i < 4 ; ++i)
-            if (isChannelToRightMixer(i + 1) && channel1.isOn())
+            if (isChannelToRightMixer(i + 1) && channelList.get(i).isOn())
                 rightAmp += soundBuffer[i];
         rightAmp *= getRightSoundLevel();
         rightAmp /= 4;
