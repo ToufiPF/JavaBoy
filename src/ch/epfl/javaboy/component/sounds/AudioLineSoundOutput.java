@@ -38,7 +38,7 @@ public class AudioLineSoundOutput implements SoundOutput {
         });
         playback.setDaemon(true);
         buffers = new byte[BUFFER_COUNT][BUFFER_SIZE];
-        indexes = new ArrayList<>();
+        indexes = new ArrayList<>(BUFFER_COUNT);
         for (int i = 0 ; i < BUFFER_COUNT ; ++i)
             indexes.add(new AtomicInteger(0));
         sel = new AtomicWrappingInteger(BUFFER_COUNT);
@@ -47,12 +47,12 @@ public class AudioLineSoundOutput implements SoundOutput {
     @Override
     public void start() {
         line.start();
-        playing = true;
-        playback.start();
-
         for (AtomicInteger i : indexes)
             i.set(0);
         sel.set(0);
+
+        playing = true;
+        playback.start();
     }
 
     @Override

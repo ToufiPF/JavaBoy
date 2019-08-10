@@ -41,6 +41,7 @@ public class SoundController implements Component, Clocked {
     private final WaveChannel channel3;
     private final NoiseChannel channel4;
     private final ArrayList<BaseChannel> channelList;
+    private static final int CHANNEL_COUNT = 4;
 
     private final RegisterFile<NR> regs;
     private final int[] waveRam;
@@ -54,7 +55,7 @@ public class SoundController implements Component, Clocked {
 
     public SoundController(SoundOutput output) {
         soundOutput = output;
-        soundBuffer = new byte[4];
+        soundBuffer = new byte[CHANNEL_COUNT];
         left = right = 0;
         soundTimer = 0;
         lastCycle = 0;
@@ -63,7 +64,7 @@ public class SoundController implements Component, Clocked {
         channel2 = new SquareWaveChannel();
         channel3 = new WaveChannel();
         channel4 = new NoiseChannel();
-        channelList = new ArrayList<>(4);
+        channelList = new ArrayList<>(CHANNEL_COUNT);
         channelList.add(channel1);
         channelList.add(channel2);
         channelList.add(channel3);
