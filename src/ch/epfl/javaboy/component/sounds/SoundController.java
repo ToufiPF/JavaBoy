@@ -1,6 +1,7 @@
 package ch.epfl.javaboy.component.sounds;
 
 import ch.epfl.javaboy.*;
+import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Clocked;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.sounds.channel.*;
@@ -40,13 +41,16 @@ public class SoundController implements Component, Clocked {
 
     private static final int TICKS_PER_SECOND = AudioLineSoundOutput.SAMPLE_RATE;
     private static final int PERIOD = (int) (GameBoy.CYCLES_PER_SECOND / TICKS_PER_SECOND);
+    private static final int CHANNEL_COUNT = 4;
+
+    private static final int STATE_LENGTH = AddressMap.WAVE_RAM_SIZE + NR.ALL.size()
+            + Integer.BYTES + Long.BYTES;
 
     private final SquareWaveChannel channel1;
     private final SquareWaveChannel channel2;
     private final WaveChannel channel3;
     private final NoiseChannel channel4;
     private final ArrayList<BaseChannel> channelList;
-    private static final int CHANNEL_COUNT = 4;
 
     private final RegisterFile<NR> regs;
     private final int[] waveRam;
@@ -91,8 +95,8 @@ public class SoundController implements Component, Clocked {
             final int id = address - AddressMap.REGS_NR_START;
             return regs.get(NR.ALL.get(id)) | NR_REGS_MASKS[id];
         }
-        if (AddressMap.REGS_WAVE_TABLE_START <= address && address < AddressMap.REGS_WAVE_TABLE_END)
-            return waveRam[address - AddressMap.REGS_WAVE_TABLE_START];
+        if (AddressMap.WAVE_RAM_START <= address && address < AddressMap.WAVE_RAM_END)
+            return waveRam[address - AddressMap.WAVE_RAM_START];
 
         return NO_DATA;
     }
@@ -108,29 +112,57 @@ public class SoundController implements Component, Clocked {
             else
                 regs.set(reg, value);
         }
-        else if (AddressMap.REGS_WAVE_TABLE_START <= address && address < AddressMap.REGS_WAVE_TABLE_END) {
-            final int id = address - AddressMap.REGS_WAVE_TABLE_START;
+        else if (AddressMap.WAVE_RAM_START <= address && address < AddressMap.WAVE_RAM_END) {
+            final int id = address - AddressMap.WAVE_RAM_START;
             waveRam[id] = value;
         }
     }
 
-    /**
-     * Starts the audio
-     */
-    public void startAudio() {
-        soundTimer = 0;
-        soundOutput.start();
-        channel1.setOn(false);
-        channel2.setOn(false);
-        channel3.setOn(false);
-        channel4.setOn(false);
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[STATE_LENGTH];
+
+        int baseIndex = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(soundTimer, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(lastCycle, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        for (int i = 0 ; i < NR.ALL.size() ; ++i)
+            state[baseIndex + i] = (byte) regs.get(NR.ALL.get(i));
+        baseIndex += NR.ALL.size();
+
+        for (int i = 0 ; i < AddressMap.WAVE_RAM_SIZE ; ++i)
+            state[baseIndex + i] = (byte) waveRam[i];
+
+        return state;
     }
 
-    /**
-     * Stops the audio
-     */
-    public void stopAudio() {
-        soundOutput.stop();
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != STATE_LENGTH)
+            throw new IllegalStateException("Invalid state.");
+
+        int baseIndex = 0;
+        soundTimer = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            soundTimer |= Byte.toUnsignedInt(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        lastCycle = 0;
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            lastCycle |= Byte.toUnsignedLong(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        for (int i = 0 ; i < NR.ALL.size() ; ++i)
+            regs.set(NR.ALL.get(i), Byte.toUnsignedInt(state[baseIndex + i]));
+        baseIndex += NR.ALL.size();
+
+        for (int i = 0 ; i < AddressMap.WAVE_RAM_SIZE ; ++i)
+            waveRam[i] = Byte.toUnsignedInt(state[baseIndex + i]);
     }
 
     @Override
@@ -154,6 +186,25 @@ public class SoundController implements Component, Clocked {
             }
             soundOutput.play(left, right);
         }
+    }
+
+    /**
+     * Starts the audio
+     */
+    public void startAudio() {
+        soundTimer = 0;
+        soundOutput.start();
+        channel1.setOn(false);
+        channel2.setOn(false);
+        channel3.setOn(false);
+        channel4.setOn(false);
+    }
+
+    /**
+     * Stops the audio
+     */
+    public void stopAudio() {
+        soundOutput.stop();
     }
 
     private void initChannels() {
@@ -318,7 +369,7 @@ public class SoundController implements Component, Clocked {
             channel3.setFreq(65536 / (2048 - freqX3));
 
             int[] channel3wav = new int[32];
-            for (int i = 0; i < AddressMap.REGS_WAVE_TABLE_END - AddressMap.REGS_WAVE_TABLE_START; i++)
+            for (int i = 0; i < AddressMap.WAVE_RAM_END - AddressMap.WAVE_RAM_START; i++)
             {
                 channel3wav[i * 2] = (waveRam[i] >> 4) & 0xF;
                 channel3wav[i * 2 + 1] = waveRam[i] & 0xF;

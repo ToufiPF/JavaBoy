@@ -1,5 +1,6 @@
 package ch.epfl.javaboy;
 
+import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
@@ -12,6 +13,7 @@ import ch.epfl.javaboy.component.sounds.AudioLineSoundOutput;
 import ch.epfl.javaboy.component.sounds.SoundController;
 
 import javax.sound.sampled.LineUnavailableException;
+import java.io.*;
 import java.util.Objects;
 
 /**
@@ -29,24 +31,24 @@ public final class GameBoy {
     private final LcdController lcd;
     private final SoundController soundController;
     private final Joypad joypad;
-    
     private final Timer timer;
-    
+
     private final BootRomController bootRomCtrl;
-    
-    private final Ram workRam;
+    private final Cartridge cartridge;
+
     private final RamController workRamCtrl;
-    private final RamController echoRamCtrl;
 
     private long simulatedCycles;
-    
+
     /**
      * Constructs a new GameBoy with
      * the given cartridge
-     * @param cartridge
+     * @param cartridge (Cartridge)
      */
     public GameBoy(Cartridge cartridge) {
         Objects.requireNonNull(cartridge);
+        this.cartridge = cartridge;
+
         bus = new Bus();
         cpu = new Cpu();
         cpu.attachTo(bus);
@@ -66,15 +68,13 @@ public final class GameBoy {
         
         timer = new Timer(cpu);
         timer.attachTo(bus);
-        
+
         bootRomCtrl = new BootRomController(cartridge);
         bootRomCtrl.attachTo(bus);
-        
-        workRam = new Ram(AddressMap.WORK_RAM_SIZE);
+
+        Ram workRam = new Ram(AddressMap.WORK_RAM_SIZE);
         workRamCtrl = new RamController(workRam, AddressMap.WORK_RAM_START, AddressMap.WORK_RAM_END);
         workRamCtrl.attachTo(bus);
-        echoRamCtrl = new RamController(workRam, AddressMap.ECHO_RAM_START, AddressMap.ECHO_RAM_END);
-        echoRamCtrl.attachTo(bus);
         
         simulatedCycles = 0;
     }
@@ -118,14 +118,6 @@ public final class GameBoy {
     }
     
     /**
-     * Returns the timer
-     * @return (Timer) timer of the GameBoy
-     */
-    public Timer timer() {
-        return timer;
-    }
-    
-    /**
      * Runs all clocked components until
      * the given cycle (excluded)
      * @param cycle (long) limit cycle
@@ -150,5 +142,101 @@ public final class GameBoy {
      */
     public long cycles() {
         return simulatedCycles;
+    }
+
+
+    public void saveState(File saveFile) throws IOException {
+        OutputStream os = new FileOutputStream(saveFile);
+        byte[] buffer;
+
+        buffer = cpu.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = lcd.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = soundController.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = joypad.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = timer.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = bootRomCtrl.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = cartridge.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = workRamCtrl.saveState();
+        os.write(Bits.decomposeInteger(buffer.length));
+        os.write(buffer);
+
+        buffer = new byte[Long.BYTES];
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            buffer[i] = (byte) Bits.extract(simulatedCycles, i * Byte.SIZE, Byte.SIZE);
+        os.write(buffer);
+    }
+
+    @SuppressWarnings("ResultOfMethodCallIgnored")
+    public void loadState(File loadFile) throws IOException {
+        InputStream is = new FileInputStream(loadFile);
+        byte[] buffLength = new byte[Integer.BYTES];
+        byte[] buffState;
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        cpu.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        lcd.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        soundController.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        joypad.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        timer.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        bootRomCtrl.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        cartridge.loadState(buffState);
+
+        is.read(buffLength);
+        buffState = new byte[Bits.recomposeInteger(buffLength)];
+        is.read(buffState);
+        workRamCtrl.loadState(buffState);
+
+        buffState = new byte[Long.BYTES];
+        is.read(buffState);
+        simulatedCycles = 0L;
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            simulatedCycles |= Byte.toUnsignedLong(buffState[i]) << (i * Byte.SIZE);
     }
 }

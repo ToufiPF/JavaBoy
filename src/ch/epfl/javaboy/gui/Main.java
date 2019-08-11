@@ -90,7 +90,7 @@ public final class Main extends Application {
     @Override
     public void start(Stage arg0) {
         if (!lastPlayedRom.isEmpty())
-            launchGame(lastPlayedRom);
+            launchGame(romsPath + lastPlayedRom);
 
         primaryStage = arg0;
         primaryStage.setMinWidth(view.getFitWidth() + 30);
@@ -99,13 +99,20 @@ public final class Main extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
         view.requestFocus();
+
+        primaryStage.setOnCloseRequest(e -> {
+
+        });
     }
 
     private void launchGame(String path) {
         File romFile = new File(path);
-        if (!romFile.exists())
+        if (!romFile.exists()) {
+            System.err.println("Last rom used not found.\n" + "Path : " + path);
             return;
+        }
 
+        //Stopping last GameBoy if needed
         if (gb != null) {
             gb.soundController().stopAudio();
         }
@@ -148,7 +155,6 @@ public final class Main extends Application {
 
         scene =  new Scene(root);
     }
-
     private void createMenuBar() {
         menuBar = new MenuBar();
 
@@ -315,32 +321,5 @@ public final class Main extends Application {
             return;
         String[] roms = romsFolder.list((dir, name) -> name.toLowerCase().endsWith(".gb"));
         romsList.addAll(roms);
-    }
-    
-    private boolean saveData(byte[] data, File dest) {
-        try (OutputStream os = new FileOutputStream(dest)) {
-            os.write(data);
-            return true;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return false;
-    }
-    private byte[] loadData(File source) {
-        try (InputStream is = new FileInputStream(source)) {
-            byte[] data = new byte[8192];
-            int read = is.read(data);
-            if (read != data.length)
-                return null;
-            return data;
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            return null;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
-        }
     }
 }

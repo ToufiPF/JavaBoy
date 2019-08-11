@@ -1,15 +1,6 @@
 package ch.epfl.javaboy.component.lcd;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-
-import ch.epfl.javaboy.AddressMap;
-import ch.epfl.javaboy.Bus;
-import ch.epfl.javaboy.Preconditions;
-import ch.epfl.javaboy.Register;
-import ch.epfl.javaboy.RegisterFile;
+import ch.epfl.javaboy.*;
 import ch.epfl.javaboy.bits.Bit;
 import ch.epfl.javaboy.bits.BitVector;
 import ch.epfl.javaboy.bits.Bits;
@@ -19,6 +10,10 @@ import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 import ch.epfl.javaboy.component.memory.Ram;
 
+import java.util.Arrays;
+import java.util.List;
+import java.util.Objects;
+
 /**
  * Represents the Lcd controller
  * of a GameBoy
@@ -26,38 +21,38 @@ import ch.epfl.javaboy.component.memory.Ram;
  */
 public final class LcdController implements Component, Clocked {
     
-    private static enum Reg implements Register {
+    private enum Reg implements Register {
         LCDC, STAT, SCY, SCX, LY, LYC, DMA, BGP, OBP0, OBP1, WY, WX;
-        public static final List<Reg> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Reg> ALL = List.of(values());
     }
 
-    private static enum Lcdc implements Bit {
-        BG, OBJ, OBJ_SIZE, BG_AREA, TILE_SOURCE, WIN, WIN_AREA, LCD_STATUS;
+    private enum Lcdc implements Bit {
+        BG, OBJ, OBJ_SIZE, BG_AREA, TILE_SOURCE, WIN, WIN_AREA, LCD_STATUS
     }
 
-    private static enum Stat implements Bit {
-        MODE0, MODE1, LYC_EQ_LY, INT_MODE0, INT_MODE1, INT_MODE2, INT_LYC;
+    private enum Stat implements Bit {
+        MODE0, MODE1, LYC_EQ_LY, INT_MODE0, INT_MODE1, INT_MODE2, INT_LYC
     }
 
-    private static enum SpriteAttributes implements Bit {
-        UNUSED0, UNUSED1, UNUSED2, UNUSED3, PALETTE, FLIP_H, FLIP_V, BEHIND_BG;
+    private enum SpriteAttributes implements Bit {
+        UNUSED0, UNUSED1, UNUSED2, UNUSED3, PALETTE, FLIP_H, FLIP_V, BEHIND_BG
     }
 
-    private static enum Mode {
+    private enum Mode {
         MODE0(51), MODE1(114), MODE2(20), MODE3(43);
-        public static final List<Mode> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Mode> ALL = List.of(values());
 
         private final int duration;
 
-        private Mode(int duration) {
+        Mode(int duration) {
             this.duration = duration;
         }
-        public int duration() {
+        int duration() {
             return duration;
         }
     }
     
-    private static enum SpriteData {
+    private enum SpriteData {
         Y, X, TILE, ATTRIBUTES
     }
 
@@ -86,6 +81,9 @@ public final class LcdController implements Component, Clocked {
     private static final int BYTES_PER_SPRITE = 4;
     
     private static final int MAX_SPRITES_PER_LINE = 10;
+
+    private static final int STATE_LENGTH = AddressMap.OAM_RAM_SIZE + AddressMap.VIDEO_RAM_SIZE
+            + Reg.ALL.size() + Long.BYTES + 2 * Integer.BYTES + 1;
 
     private final RegisterFile<Reg> vregs;
     private final Ram vRam, oamRam;
@@ -136,12 +134,6 @@ public final class LcdController implements Component, Clocked {
     }
     
     @Override
-    public void attachTo(Bus bus) {
-        this.bus = bus;
-        Component.super.attachTo(bus);
-    }
-    
-    @Override
     public int read(int address) {
         Preconditions.checkBits16(address);
 
@@ -156,6 +148,7 @@ public final class LcdController implements Component, Clocked {
 
         return NO_DATA;
     }
+
     @Override
     public void write(int address, int value) {
         Preconditions.checkBits16(address);
@@ -170,6 +163,80 @@ public final class LcdController implements Component, Clocked {
     }
 
     @Override
+    public void attachTo(Bus bus) {
+        this.bus = bus;
+        bus.attach(this);
+    }
+
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[STATE_LENGTH];
+
+        int baseIndex = 0;
+        int statusByte = ((isHalted ? 1 : 0) << 1) | (copyRequired ? 1 : 0);
+        state[baseIndex++] = (byte) statusByte;
+
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(copyIndex, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(winY, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(nextNonIdleCycle, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        System.arraycopy(oamRam.getData(), 0, state, baseIndex, oamRam.size());
+        baseIndex += oamRam.size();
+
+        System.arraycopy(vRam.getData(), 0, state, baseIndex, vRam.size());
+        baseIndex += vRam.size();
+
+        for (int i = 0 ; i < Reg.ALL.size() ; ++i)
+            state[baseIndex + i] = (byte) vregs.get(Reg.ALL.get(i));
+
+        return state;
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != STATE_LENGTH)
+            throw new IllegalStateException("Invalid state.");
+
+        isHalted = Bits.test(state[0], 1);
+        copyRequired = Bits.test(state[0], 0);
+
+        int baseIndex = 1;
+        copyIndex = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            copyIndex |= Byte.toUnsignedInt(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        winY = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            winY |= Byte.toUnsignedInt(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Integer.BYTES;
+
+        nextNonIdleCycle = 0;
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            nextNonIdleCycle |= Byte.toUnsignedLong(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        System.arraycopy(state, baseIndex, oamRam.getData(), 0, oamRam.size());
+        baseIndex += oamRam.size();
+
+        System.arraycopy(state, baseIndex, vRam.getData(), 0, vRam.size());
+        baseIndex += vRam.size();
+
+        for (int i = 0 ; i < Reg.ALL.size() ; ++i)
+            vregs.set(Reg.ALL.get(i), Byte.toUnsignedInt(state[baseIndex + i]));
+
+        current = BLANK_IMAGE;
+    }
+
+    @Override
     public void cycle(long cycle) {
         if (isHalted && vregs.testBit(Reg.LCDC, Lcdc.LCD_STATUS)) {
             isHalted = false;
@@ -178,8 +245,7 @@ public final class LcdController implements Component, Clocked {
         
         if (copyRequired)
             copyOamByte();
-        
-        
+
         if (isHalted || cycle < nextNonIdleCycle)
             return;
         

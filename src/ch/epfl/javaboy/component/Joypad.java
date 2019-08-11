@@ -1,13 +1,11 @@
 package ch.epfl.javaboy.component;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
+
+import java.util.List;
 
 /**
  * Represents the Joypad of a GameBoy
@@ -19,9 +17,9 @@ public final class Joypad implements Component {
      * Keys of the GameBoy
      * @author Toufi
      */
-    public static enum Key {
+    public enum Key {
         RIGHT, LEFT, UP, DOWN, A, B, SELECT, START;
-        public static final List<Key> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+        public static final List<Key> ALL = List.of(values());
         public static final int COUNT = ALL.size();
     }
 
@@ -56,7 +54,23 @@ public final class Joypad implements Component {
             refreshP1();
         }
     }
-    
+
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[2];
+        state[0] = (byte) regP1;
+        state[1] = (byte) buttonStates;
+        return state;
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != 1)
+            throw new IllegalStateException("Invalid state.");
+        regP1 = Byte.toUnsignedInt(state[0]);
+        buttonStates = Byte.toUnsignedInt(state[1]);
+    }
+
     /**
      * To call when the given key was pressed
      * @param key (Joypad.Key) pressed key

@@ -29,5 +29,5 @@ public interface AddressMap {
     
     // Sounds registers
     int REGS_NR_START = 0xFF10, REGS_NR_END = 0xFF27;
-    int REGS_WAVE_TABLE_START = 0xFF30, REGS_WAVE_TABLE_END = 0xFF40;
+    int WAVE_RAM_START = 0xFF30, WAVE_RAM_END = 0xFF40, WAVE_RAM_SIZE = WAVE_RAM_END - WAVE_RAM_START;
 }

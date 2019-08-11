@@ -3,6 +3,7 @@ package ch.epfl.javaboy.component.memory;
 import java.util.Objects;
 
 import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 
@@ -41,5 +42,19 @@ public class BootRomController implements Component {
         if (address == AddressMap.REG_BOOT_ROM_DISABLE)
             bootRomDisabled = true;
         cart.write(address, value);
+    }
+
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[1];
+        state[0] = (byte) (bootRomDisabled ? 1 : 0);
+        return state;
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != 1)
+            throw new IllegalStateException("Invalid state.");
+        bootRomDisabled = Bits.test(state[0], 0);
     }
 }

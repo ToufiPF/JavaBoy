@@ -71,6 +71,31 @@ final class MBC1 implements Component {
         }
     }
 
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[ram.size() + 2];
+
+        int statusByte1 = ((ramEnabled ? 1 : 0) << 1) | (mode == Mode.MODE_1 ? 1 : 0);
+        int statusByte2 = (romLsb5 << 2) | ramRom2;
+        state[0] = (byte) statusByte1;
+        state[1] = (byte) statusByte2;
+
+        for (int i = 0 ; i < ram.size() ; ++i)
+            state[2 + i] = ram.getData()[i];
+        return state;
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != ram.size() + 2)
+            throw new IllegalStateException("Invalid state.");
+        ramEnabled = Bits.test(state[0], 1);
+        mode = Bits.test(state[0], 0) ? Mode.MODE_1 : Mode.MODE_0;
+
+        for (int i = 0 ; i < ram.size() ; ++i)
+            ram.getData()[i] = state[2 + i];
+    }
+
     private int msb2() {
         switch (mode) {
         case MODE_0: return 0;
