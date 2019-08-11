@@ -1,5 +1,10 @@
 package ch.epfl.javaboy.component.sounds.channel;
 
+/**
+ * Represents a VolumeEnvelope,
+ * a subcomponent of a Channel
+ * @author Bryan Johnson (https://github.com/bryanjjohnson/Java-Gameboy-Emulator)
+ */
 public class Envelope {
     private int base;
     private boolean increment;

@@ -9,6 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * Represents the SoundController of a GameBoy
+ * @author Bryan Johnson (https://github.com/bryanjjohnson/Java-Gameboy-Emulator)
+ * @author Toufi
+ */
 public class SoundController implements Component, Clocked {
 
     private enum NR implements Register {
@@ -53,6 +58,11 @@ public class SoundController implements Component, Clocked {
     private int soundTimer;
     private long lastCycle;
 
+    /**
+     * Constructs a SoundController
+     * with the given output
+     * @param output (SoundOutput)
+     */
     public SoundController(SoundOutput output) {
         soundOutput = output;
         soundBuffer = new byte[CHANNEL_COUNT];
@@ -104,6 +114,9 @@ public class SoundController implements Component, Clocked {
         }
     }
 
+    /**
+     * Starts the audio
+     */
     public void startAudio() {
         soundTimer = 0;
         soundOutput.start();
@@ -112,6 +125,10 @@ public class SoundController implements Component, Clocked {
         channel3.setOn(false);
         channel4.setOn(false);
     }
+
+    /**
+     * Stops the audio
+     */
     public void stopAudio() {
         soundOutput.stop();
     }

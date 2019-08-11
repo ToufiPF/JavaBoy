@@ -1,5 +1,9 @@
 package ch.epfl.javaboy.component.sounds.channel;
 
+/**
+ * Represents the base of a Channel
+ * @author Bryan Johnson (https://github.com/bryanjjohnson/Java-Gameboy-Emulator)
+ */
 public abstract class BaseChannel {
     private boolean on;
     private boolean count;

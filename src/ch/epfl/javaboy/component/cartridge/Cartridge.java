@@ -58,7 +58,6 @@ public final class Cartridge implements Component {
             }
             
             throw new IllegalArgumentException("Rom type non supported.");
-
         }
     }
     
