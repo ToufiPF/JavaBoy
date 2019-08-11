@@ -65,7 +65,7 @@ public final class Joypad implements Component {
 
     @Override
     public void loadState(byte[] state) {
-        if (state.length != 1)
+        if (state.length != 2)
             throw new IllegalStateException("Invalid state.");
         regP1 = Byte.toUnsignedInt(state[0]);
         buttonStates = Byte.toUnsignedInt(state[1]);

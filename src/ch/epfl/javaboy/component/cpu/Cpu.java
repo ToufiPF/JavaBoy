@@ -184,8 +184,8 @@ public final class Cpu implements Component, Clocked {
         IME = Bits.test(state[0], 1);
         isHalted = Bits.test(state[0], 0);
 
-        PC = (state[2] << Byte.SIZE) | state[1];
-        SP = (state[4] << Byte.SIZE) | state[3];
+        PC = (Byte.toUnsignedInt(state[2]) << Byte.SIZE) | Byte.toUnsignedInt(state[1]);
+        SP = (Byte.toUnsignedInt(state[4]) << Byte.SIZE) | Byte.toUnsignedInt(state[3]);
 
         int baseIndex = 5;
         nextNonIdleCycle = 0;

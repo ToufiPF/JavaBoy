@@ -1,6 +1,8 @@
 package ch.epfl.javaboy.gui;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
@@ -37,17 +39,7 @@ import static ch.epfl.javaboy.gui.Options.*;
 public final class Main extends Application {
 
     public static void main(String[] args) {
-        if (args.length != 0) {
-            launch(args);
-        } else {
-            List<String> listGames = new ArrayList<>();
-            listGames.add("tetris.gb");
-            listGames.add("2048.gb");
-            listGames.add("flappyboy.gb");
-            listGames.add("snake.gb");
-            String[] params = { "Roms/" + listGames.get(0) };
-            launch(params);
-        }
+        launch(args);
     }
 
     private static void displayErrorAndExit(String... msg) {
@@ -56,28 +48,32 @@ public final class Main extends Application {
         System.exit(1);
     }
 
-    private Map<KeyCode, Joypad.Key> keysMap;
-
-    private Stage primaryStage;
-    private GameBoy gb;
-    private AnimationTimer timer;
-
     private ImageView view;
     private BorderPane root;
-    private Scene scene;
     private MenuBar menuBar;
+    private Scene scene;
+    private Stage primaryStage;
+
+    private final SaveLoadDialog saveLoadDialog;
 
     private String romsPath;
     private final ObservableList<String> romsList;
     private String lastPlayedRom;
 
-    private String savesPath;
-    
+    private Map<KeyCode, Joypad.Key> keysMap;
+
+    GameBoy gb;
+    AnimationTimer timer;
+
     public Main() {
-        keysMap = null;
         primaryStage = null;
-        gb = null;
+        saveLoadDialog = new SaveLoadDialog();
+
         romsList = FXCollections.observableList(new LinkedList<>());
+        keysMap = null;
+
+        gb = null;
+        timer = null;
 
         loadAllOptions();
 
@@ -91,6 +87,8 @@ public final class Main extends Application {
     public void start(Stage arg0) {
         if (!lastPlayedRom.isEmpty())
             launchGame(romsPath + lastPlayedRom);
+
+        saveLoadDialog.setRomName(lastPlayedRom);
 
         primaryStage = arg0;
         primaryStage.setMinWidth(view.getFitWidth() + 30);
@@ -167,6 +165,7 @@ public final class Main extends Application {
                 rom.setOnAction(e -> {
                     launchGame(romsPath + rom.getText());
                     lastPlayedRom = rom.getText();
+                    saveLoadDialog.setRomName(lastPlayedRom);
                     saveAllOptions();
                 });
                 romLoad.getItems().add(rom);
@@ -193,13 +192,23 @@ public final class Main extends Application {
         save.setOnAction(e -> {
 
         });
+
         MenuItem quickSave = new MenuItem("QuickSave");
         quickSave.setOnAction(e -> {
-            
+            File file = new File(saveLoadDialog.getQuickSavePath());
+            if (!file.exists()) {
+                try {
+                    Files.createDirectories(Paths.get(file.getParent()));
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
+            saveState(file);
         });
         MenuItem quickLoad = new MenuItem("QuickLoad");
         quickLoad.setOnAction(e -> {
-            
+            File file = new File(saveLoadDialog.getQuickSavePath());
+            loadState(file);
         });
         MenuItem quit = new MenuItem("Quit");
         quit.setOnAction(e -> System.exit(0));
@@ -236,7 +245,6 @@ public final class Main extends Application {
             writer.write(GENERAL_TAG + '\n');
             writer.write(ROMS_PATH_TAG + romsPath + '\n');
             writer.write(LAST_PLAYED_ROM_TAG + lastPlayedRom + '\n');
-            writer.write(SAVES_PATH_TAG + savesPath + '\n');
             // Key Map
             writer.write(KEY_MAP_TAG + '\n');
             String str = JoypadMapDialog.serializeKeyMap(keysMap);
@@ -287,8 +295,6 @@ public final class Main extends Application {
                 for (String line : content) {
                     if (line.startsWith(ROMS_PATH_TAG))
                         romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
-                    else if (line.startsWith(SAVES_PATH_TAG))
-                        savesPath = line.substring(SAVES_PATH_TAG.length()).trim();
                     else if (line.startsWith(LAST_PLAYED_ROM_TAG))
                         lastPlayedRom = line.substring(LAST_PLAYED_ROM_TAG.length()).trim();
                 }
@@ -307,7 +313,6 @@ public final class Main extends Application {
         // General
         romsPath = DEFAULT_ROMS_PATH;
         lastPlayedRom = "";
-        savesPath = DEFAULT_SAVE_PATH;
         // Key Map
         keysMap = JoypadMapDialog.defaultKeyMap();
     }
@@ -321,5 +326,27 @@ public final class Main extends Application {
             return;
         String[] roms = romsFolder.list((dir, name) -> name.toLowerCase().endsWith(".gb"));
         romsList.addAll(roms);
+    }
+
+    private boolean saveState(File file) {
+        try (OutputStream os = new FileOutputStream(file)) {
+            gb.saveState(os);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+    private boolean loadState(File file) {
+        try (InputStream is = new FileInputStream(file)) {
+            gb.loadState(is);
+            long elapsedNanoSec = (long) (gb.cycles() / GameBoy.CYCLES_PER_NANO_SECOND);
+            timer = createAnimationTimer(gb, System.nanoTime() - elapsedNanoSec);
+            timer.start();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return false;
     }
 }
