@@ -72,6 +72,8 @@ public final class Main extends Application {
 
     private String romsPath;
     private final ObservableList<String> romsList;
+
+    private String savesPath;
     
     public Main() {
         keysMap = null;
@@ -165,7 +167,7 @@ public final class Main extends Application {
             dirChos.setInitialDirectory(new File(romsPath));
             File romsFolder = dirChos.showDialog(null);
             if (romsFolder != null && romsFolder.exists())
-                romsPath = romsFolder.getAbsolutePath();
+                romsPath = romsFolder.getPath();
             reloadRomsInActivePath();
             saveAllOptions();
         });
@@ -219,6 +221,7 @@ public final class Main extends Application {
             // General
             writer.write(GENERAL_TAG + '\n');
             writer.write(ROMS_PATH_TAG + romsPath + '\n');
+            writer.write(SAVES_PATH_TAG + savesPath + '\n');
             // Key Map
             writer.write(KEY_MAP_TAG + '\n');
             String str = JoypadMapDialog.serializeKeyMap(keysMap);
@@ -269,6 +272,8 @@ public final class Main extends Application {
                 for (String line : content) {
                     if (line.contains(ROMS_PATH_TAG))
                         romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
+                    else if (line.contains(SAVES_PATH_TAG))
+                        savesPath = line.substring(SAVES_PATH_TAG.length()).trim();
                 }
                 break;
             case KEY_MAP_TAG:
@@ -284,6 +289,7 @@ public final class Main extends Application {
     private void allOptionsToDefault() {
         // General
         romsPath = DEFAULT_ROMS_PATH;
+        savesPath = DEFAULT_SAVE_PATH;
         // Key Map
         keysMap = JoypadMapDialog.defaultKeyMap();
     }
