@@ -12,9 +12,6 @@ import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.beans.InvalidationListener;
-import javafx.beans.Observable;
-import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -72,6 +69,7 @@ public final class Main extends Application {
 
     private String romsPath;
     private final ObservableList<String> romsList;
+    private String lastPlayedRom;
 
     private String savesPath;
     
@@ -90,20 +88,9 @@ public final class Main extends Application {
     }
 
     @Override
-    public void start(Stage arg0) throws Exception {
-        List<String> args = getParameters().getRaw();
-
-        if (args.size() != 1)
-            displayErrorAndExit("Argument invalide.", 
-                    "Veuillez spécifier exactement un argument : le nom de la rom à lancer.");
-        File romFile = new File(args.get(0));
-        if (!romFile.exists())
-            displayErrorAndExit("Argument invalide.",
-                    "Le fichier spécifié n'existe pas. (" + romFile.getAbsolutePath() + ").");
-
-        gb = new GameBoy(Cartridge.ofFile(romFile));
-        timer = createAnimationTimer(System.nanoTime());
-        timer.start();
+    public void start(Stage arg0) {
+        if (!lastPlayedRom.isEmpty())
+            launchGame(lastPlayedRom);
 
         primaryStage = arg0;
         primaryStage.setMinWidth(view.getFitWidth() + 30);
@@ -114,15 +101,31 @@ public final class Main extends Application {
         view.requestFocus();
     }
 
-    private AnimationTimer createAnimationTimer(long startTime) {
+    private void launchGame(String path) {
+        File romFile = new File(path);
+        if (!romFile.exists())
+            return;
+
+        if (gb != null) {
+            gb.soundController().stopAudio();
+        }
+        try {
+            gb = new GameBoy(Cartridge.ofFile(romFile));
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        timer = createAnimationTimer(gb, System.nanoTime());
+        timer.start();
+    }
+    private AnimationTimer createAnimationTimer(GameBoy gameBoy, long startTime) {
         return new AnimationTimer() {
             @Override
             public void handle(long now) {
                 long elapsed = now - startTime;
                 long cycles = (long) (elapsed * GameBoy.CYCLES_PER_NANO_SECOND);
-                gb.runUntil(cycles);
+                gameBoy.runUntil(cycles);
                 view.setImage(ImageConverter.convert(
-                        gb.lcdController().currentImage()));
+                        gameBoy.lcdController().currentImage()));
             }
         };
     }
@@ -156,7 +159,9 @@ public final class Main extends Application {
             for (String str : change.getList()) {
                 MenuItem rom = new MenuItem(str);
                 rom.setOnAction(e -> {
-                    //TODO: launch selected game
+                    launchGame(romsPath + rom.getText());
+                    lastPlayedRom = rom.getText();
+                    saveAllOptions();
                 });
                 romLoad.getItems().add(rom);
             }
@@ -168,9 +173,12 @@ public final class Main extends Application {
             File romsFolder = dirChos.showDialog(null);
             if (romsFolder != null && romsFolder.exists())
                 romsPath = romsFolder.getPath();
+            if (!(romsPath.endsWith("/") || romsPath.endsWith("\\")))
+                romsPath += '\\';
             reloadRomsInActivePath();
             saveAllOptions();
         });
+
         MenuItem save = new MenuItem("Save");
         save.setOnAction(e -> {
 
@@ -221,6 +229,7 @@ public final class Main extends Application {
             // General
             writer.write(GENERAL_TAG + '\n');
             writer.write(ROMS_PATH_TAG + romsPath + '\n');
+            writer.write(LAST_PLAYED_ROM_TAG + lastPlayedRom + '\n');
             writer.write(SAVES_PATH_TAG + savesPath + '\n');
             // Key Map
             writer.write(KEY_MAP_TAG + '\n');
@@ -270,10 +279,12 @@ public final class Main extends Application {
         switch (optionTag) {
             case GENERAL_TAG:
                 for (String line : content) {
-                    if (line.contains(ROMS_PATH_TAG))
+                    if (line.startsWith(ROMS_PATH_TAG))
                         romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
-                    else if (line.contains(SAVES_PATH_TAG))
+                    else if (line.startsWith(SAVES_PATH_TAG))
                         savesPath = line.substring(SAVES_PATH_TAG.length()).trim();
+                    else if (line.startsWith(LAST_PLAYED_ROM_TAG))
+                        lastPlayedRom = line.substring(LAST_PLAYED_ROM_TAG.length()).trim();
                 }
                 break;
             case KEY_MAP_TAG:
@@ -289,6 +300,7 @@ public final class Main extends Application {
     private void allOptionsToDefault() {
         // General
         romsPath = DEFAULT_ROMS_PATH;
+        lastPlayedRom = "";
         savesPath = DEFAULT_SAVE_PATH;
         // Key Map
         keysMap = JoypadMapDialog.defaultKeyMap();
