@@ -1,22 +1,26 @@
 package ch.epfl.javaboy.gui;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
-
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.Joypad.Key;
 import javafx.beans.binding.Bindings;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
+import javafx.event.Event;
+import javafx.event.EventType;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.GridPane;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Dialog to show when the "Controls" menu is clicked.
@@ -56,7 +60,7 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
 
             String[] subSplit = lines[i].split("=>");
             if (subSplit.length != 2)
-                throw new IllegalArgumentException("DeserializeKeyMap : Invalid String");
+                throw new IllegalArgumentException("DeserializeKeyMap : Invalid String : " + lines[i]);
 
             KeyCode key = KeyCode.valueOf(subSplit[0]);
             Joypad.Key val = Joypad.Key.valueOf(subSplit[1]);
@@ -165,9 +169,10 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             buttonKeys.setOnMouseClicked(e -> {
                 keyCodes.get(id).clear();
                 buttonKeys.requestFocus();
+                e.consume();
             });
-            buttonKeys.setOnKeyPressed(e -> e.consume());
-            buttonKeys.setOnKeyReleased(e -> {
+            buttonKeys.addEventFilter(KeyEvent.KEY_PRESSED, Event::consume);
+            buttonKeys.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
                 e.consume();
                 for (Set<KeyCode> set : keyCodes.values())
                     if (set.contains(e.getCode()))
@@ -194,7 +199,9 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         
         getDialogPane().setContent(grid);
 
-
+        for (Node n : grid.getChildren())
+            n.setFocusTraversable(false);
+        getDialogPane().setFocusTraversable(false);
 
         setResultConverter(btn -> {
             if (btn.equals(ButtonType.OK))

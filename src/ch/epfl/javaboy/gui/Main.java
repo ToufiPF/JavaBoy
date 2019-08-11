@@ -1,18 +1,8 @@
 package ch.epfl.javaboy.gui;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
-import java.io.Reader;
-import java.io.UncheckedIOException;
-import java.io.Writer;
+import java.io.*;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -22,14 +12,24 @@ import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.beans.InvalidationListener;
+import javafx.beans.Observable;
+import javafx.beans.binding.Bindings;
+import javafx.collections.FXCollections;
+import javafx.collections.ListChangeListener;
+import javafx.collections.ObservableList;
 import javafx.scene.Scene;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+
+import static ch.epfl.javaboy.gui.Options.*;
 
 /**
  * The Main class of the JavaBoy emulator.
@@ -48,7 +48,7 @@ public final class Main extends Application {
             listGames.add("2048.gb");
             listGames.add("flappyboy.gb");
             listGames.add("snake.gb");
-            String[] params = { "Roms/Games/" + listGames.get(0) };
+            String[] params = { "Roms/" + listGames.get(0) };
             launch(params);
         }
     }
@@ -59,7 +59,7 @@ public final class Main extends Application {
         System.exit(1);
     }
 
-    private Map<KeyCode, Joypad.Key> mapKeys;
+    private Map<KeyCode, Joypad.Key> keysMap;
 
     private Stage primaryStage;
     private GameBoy gb;
@@ -69,15 +69,22 @@ public final class Main extends Application {
     private BorderPane root;
     private Scene scene;
     private MenuBar menuBar;
+
+    private String romsPath;
+    private final ObservableList<String> romsList;
     
     public Main() {
-        mapKeys = null;
-        loadKeyMap();
+        keysMap = null;
         primaryStage = null;
         gb = null;
+        romsList = FXCollections.observableList(new LinkedList<>());
+
+        loadAllOptions();
 
         createSceneRootView();
         createMenuBar();
+
+        reloadRomsInActivePath();
     }
 
     @Override
@@ -105,25 +112,6 @@ public final class Main extends Application {
         view.requestFocus();
     }
 
-    private void createSceneRootView() {
-        view = new ImageView();
-        view.setFitWidth(LcdController.LCD_WIDTH * 3);
-        view.setFitHeight(LcdController.LCD_HEIGHT * 3);
-
-        view.setOnKeyPressed(e -> {
-            if (mapKeys.containsKey(e.getCode()))
-                gb.joypad().keyPressed(mapKeys.get(e.getCode()));
-        });
-        view.setOnKeyReleased(e -> {
-            if (mapKeys.containsKey(e.getCode()))
-                gb.joypad().keyReleased(mapKeys.get(e.getCode()));
-        });
-
-        root = new BorderPane(view);
-
-        scene =  new Scene(root);
-    }
-
     private AnimationTimer createAnimationTimer(long startTime) {
         return new AnimationTimer() {
             @Override
@@ -137,13 +125,49 @@ public final class Main extends Application {
         };
     }
 
+    private void createSceneRootView() {
+        view = new ImageView();
+        view.setFitWidth(LcdController.LCD_WIDTH * 3);
+        view.setFitHeight(LcdController.LCD_HEIGHT * 3);
+
+        view.setOnKeyPressed(e -> {
+            if (keysMap.containsKey(e.getCode()))
+                gb.joypad().keyPressed(keysMap.get(e.getCode()));
+        });
+        view.setOnKeyReleased(e -> {
+            if (keysMap.containsKey(e.getCode()))
+                gb.joypad().keyReleased(keysMap.get(e.getCode()));
+        });
+
+        root = new BorderPane(view);
+
+        scene =  new Scene(root);
+    }
+
     private void createMenuBar() {
         menuBar = new MenuBar();
 
         Menu fileMenu = new Menu("File");
-        MenuItem romLoad = new MenuItem("Load Rom");
-        romLoad.setOnAction(e -> {
-
+        Menu romLoad = new Menu("Choose Rom");
+        romsList.addListener((ListChangeListener<? super String>) (change) -> {
+            romLoad.getItems().clear();
+            for (String str : change.getList()) {
+                MenuItem rom = new MenuItem(str);
+                rom.setOnAction(e -> {
+                    //TODO: launch selected game
+                });
+                romLoad.getItems().add(rom);
+            }
+        });
+        MenuItem romPath = new MenuItem("Roms Folder...");
+        romPath.setOnAction(e -> {
+            DirectoryChooser dirChos = new DirectoryChooser();
+            dirChos.setInitialDirectory(new File(romsPath));
+            File romsFolder = dirChos.showDialog(null);
+            if (romsFolder != null && romsFolder.exists())
+                romsPath = romsFolder.getAbsolutePath();
+            reloadRomsInActivePath();
+            saveAllOptions();
         });
         MenuItem save = new MenuItem("Save");
         save.setOnAction(e -> {
@@ -163,15 +187,16 @@ public final class Main extends Application {
         });
         MenuItem quit = new MenuItem("Quit");
         quit.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().addAll(romLoad, save, load, quickSave, quickLoad, quit);
+        fileMenu.getItems().addAll(romLoad, romPath, new SeparatorMenuItem(),
+                save, load, quickSave, quickLoad, new SeparatorMenuItem(), quit);
 
         Menu optionsMenu = new Menu("Options");
         MenuItem controls = new MenuItem("Controls");
         controls.setOnAction(e -> {
-            JoypadMapDialog dial = new JoypadMapDialog(mapKeys);
+            JoypadMapDialog dial = new JoypadMapDialog(keysMap);
             dial.showAndWait();
-            mapKeys = dial.getResult();
-            saveKeyMap();
+            keysMap = dial.getResult();
+            saveAllOptions();
         });
         optionsMenu.getItems().addAll(controls);
 
@@ -187,40 +212,91 @@ public final class Main extends Application {
 
         root.setTop(menuBar);
     }
-    
-    private void saveKeyMap() {
-        File save = new File("keymap.ini");
-        try (Writer writer = new FileWriter(save)) {
-            String str = JoypadMapDialog.serializeKeyMap(mapKeys);
+
+    private void saveAllOptions() {
+        File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
+        try (Writer writer = new FileWriter(options)) {
+            // General
+            writer.write(GENERAL_TAG + '\n');
+            writer.write(ROMS_PATH_TAG + romsPath + '\n');
+            // Key Map
+            writer.write(KEY_MAP_TAG + '\n');
+            String str = JoypadMapDialog.serializeKeyMap(keysMap);
             writer.write(str);
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-    
-    private void loadKeyMap() {
-        File load = new File("keymap.ini");
-        try (Reader reader = new FileReader(load)) {
-            StringBuilder b = new StringBuilder();
-            
-            char[] buff = new char[20];
-            int read;
-            while ((read = reader.read(buff)) != -1)
-                b.append(buff, 0, read);
-            
-            mapKeys = JoypadMapDialog.deserializeKeyMap(b.toString());
-            
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-            mapKeys = JoypadMapDialog.defaultKeyMap();
-        } catch (IllegalArgumentException e) {
-            e.printStackTrace();
-            mapKeys = JoypadMapDialog.defaultKeyMap();
         } catch (IOException e) {
             throw new UncheckedIOException(e);
-        } 
+        }
+    }
+    private void loadAllOptions() {
+        allOptionsToDefault();
+        File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
+        try (BufferedReader reader = new BufferedReader(new FileReader(options))) {
+            String line, lastTag = null;
+            LinkedList<String> content = new LinkedList<>();
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().equals(GENERAL_TAG)) {
+                    if (lastTag != null)
+                        loadOption(lastTag, content);
+                    lastTag = GENERAL_TAG;
+                    content.clear();
+                } else if (line.trim().equals(KEY_MAP_TAG)) {
+                    if (lastTag != null)
+                        loadOption(lastTag, content);
+                    lastTag = KEY_MAP_TAG;
+                    content.clear();
+                } else if (line.startsWith("#")) {
+                    continue;
+                } else {
+                    content.add(line);
+                }
+            }
+            if (lastTag != null)
+                loadOption(lastTag, content);
+
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException e) {
+            e.printStackTrace();
+            allOptionsToDefault();
+        }catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        saveAllOptions();
+    }
+    private void loadOption(String optionTag, List<String> content) {
+        switch (optionTag) {
+            case GENERAL_TAG:
+                for (String line : content) {
+                    if (line.contains(ROMS_PATH_TAG))
+                        romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
+                }
+                break;
+            case KEY_MAP_TAG:
+                StringBuilder b = new StringBuilder();
+                for (String s : content)
+                    b.append(s).append('\n');
+                keysMap = JoypadMapDialog.deserializeKeyMap(b.toString());
+                break;
+            default:
+                throw new IllegalArgumentException();
+        }
+    }
+    private void allOptionsToDefault() {
+        // General
+        romsPath = DEFAULT_ROMS_PATH;
+        // Key Map
+        keysMap = JoypadMapDialog.defaultKeyMap();
+    }
+
+    private void reloadRomsInActivePath() {
+        romsList.clear();
+        if (romsPath == null)
+            return;
+        File romsFolder = new File(romsPath);
+        if (!romsFolder.exists())
+            return;
+        String[] roms = romsFolder.list((dir, name) -> name.toLowerCase().endsWith(".gb"));
+        romsList.addAll(roms);
     }
     
     private boolean saveData(byte[] data, File dest) {
