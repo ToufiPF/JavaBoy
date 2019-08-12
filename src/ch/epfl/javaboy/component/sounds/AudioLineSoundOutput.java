@@ -31,12 +31,6 @@ public class AudioLineSoundOutput implements SoundOutput {
         line = AudioSystem.getSourceDataLine(FORMAT);
         line.open(FORMAT, LINE_BUFFER_SIZE);
 
-        playback = new Thread(() -> {
-            while (playing) {
-                emptyBuffersIfFull();
-            }
-        });
-        playback.setDaemon(true);
         buffers = new byte[BUFFER_COUNT][BUFFER_SIZE];
         indexes = new ArrayList<>(BUFFER_COUNT);
         for (int i = 0 ; i < BUFFER_COUNT ; ++i)
@@ -52,6 +46,12 @@ public class AudioLineSoundOutput implements SoundOutput {
         sel.set(0);
 
         playing = true;
+        playback = new Thread(() -> {
+            while (playing) {
+                emptyBuffersIfFull();
+            }
+        });
+        playback.setDaemon(true);
         playback.start();
     }
 

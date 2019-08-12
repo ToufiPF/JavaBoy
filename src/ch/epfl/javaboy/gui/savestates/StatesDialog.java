@@ -49,6 +49,10 @@ public final class StatesDialog extends Dialog<String> {
 
     }
 
+    public boolean autoSaveFilesExist() {
+        return new File(autoStatePath + ".dat").exists()
+                && new File(autoStatePath + ".meta").exists();
+    }
     public void autoSave(GameBoy gb) throws IOException {
         autoSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
@@ -62,6 +66,10 @@ public final class StatesDialog extends Dialog<String> {
         return state;
     }
 
+    public boolean quickSaveFilesExist() {
+        return new File(quickStatePath + ".dat").exists()
+                && new File(quickStatePath + ".meta").exists();
+    }
     public void quickSave(GameBoy gb) throws IOException {
         quickSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
@@ -75,6 +83,10 @@ public final class StatesDialog extends Dialog<String> {
         return state;
     }
 
+    public boolean regularSaveFilesExist(int slot) {
+        return new File(regularStatePath + slot + ".dat").exists()
+                && new File(regularStatePath + slot + ".meta").exists();
+    }
     public void regularSave(GameBoy gb, int slot) throws IOException {
         regularSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()), slot);
     }

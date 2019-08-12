@@ -6,6 +6,7 @@ import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.lcd.LcdController;
+import ch.epfl.javaboy.component.lcd.LcdImage;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
@@ -189,7 +190,8 @@ public final class GameBoy {
         return os.toByteArray();
     }
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public void loadState(byte[] state) throws IOException {
+    public void loadState(byte[] state, LcdImage screen) throws IOException {
+        soundController.stopAudio();
         ByteArrayInputStream is = new ByteArrayInputStream(state);
 
         byte[] buffLength = new byte[Integer.BYTES];
@@ -240,5 +242,8 @@ public final class GameBoy {
         simulatedCycles = 0L;
         for (int i = 0 ; i < Long.BYTES ; ++i)
             simulatedCycles |= Byte.toUnsignedLong(buffState[i]) << (i * Byte.SIZE);
+
+        soundController.startAudio();
+        lcd.setCurrentImage(screen);
     }
 }

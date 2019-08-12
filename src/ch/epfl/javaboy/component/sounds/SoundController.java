@@ -194,10 +194,8 @@ public class SoundController implements Component, Clocked {
     public void startAudio() {
         soundTimer = 0;
         soundOutput.start();
-        channel1.setOn(false);
-        channel2.setOn(false);
-        channel3.setOn(false);
-        channel4.setOn(false);
+        for (BaseChannel c : channelList)
+            c.setOn(false);
     }
 
     /**

@@ -8,19 +8,19 @@ import ch.epfl.javaboy.gui.savestates.State;
 import ch.epfl.javaboy.gui.savestates.StatesDialog;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
+import javafx.beans.value.ChangeListener;
+import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
-import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import java.io.*;
 import java.util.LinkedList;
@@ -59,16 +59,21 @@ public final class Main extends Application {
     private String lastPlayedRom;
 
     private Map<KeyCode, Joypad.Key> keysMap;
+    private boolean autoLoadWhenLaunchingRom;
 
-    GameBoy gb;
-    AnimationTimer timer;
+    private GameBoy gb;
+    private AnimationTimer timer;
 
     public Main() {
         primaryStage = null;
         statesDial = null;
 
+        romsPath = null;
         romsList = FXCollections.observableList(new LinkedList<>());
+        lastPlayedRom = null;
+
         keysMap = null;
+        autoLoadWhenLaunchingRom = false;
 
         gb = null;
         timer = null;
@@ -96,7 +101,13 @@ public final class Main extends Application {
         view.requestFocus();
 
         primaryStage.setOnCloseRequest(e -> {
-
+            if (gb != null) {
+                try {
+                    statesDial.autoSave(gb);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            }
         });
     }
 
@@ -120,6 +131,15 @@ public final class Main extends Application {
         timer = createAnimationTimer(gb, System.nanoTime());
         timer.start();
         statesDial = new StatesDialog(name);
+        if (autoLoadWhenLaunchingRom) {
+            try {
+                State auto = statesDial.autoLoad();
+                gb.loadState(auto.getGbState(), auto.getScreenshot());
+                onLoadingState();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
     private AnimationTimer createAnimationTimer(GameBoy gameBoy, long startTime) {
         return new AnimationTimer() {
@@ -154,85 +174,106 @@ public final class Main extends Application {
     }
     private void createMenuBar() {
         MenuBar menuBar = new MenuBar();
+        // File Menu
+        {
+            Menu fileMenu = new Menu("File");
+            Menu romLoad = new Menu("Choose Rom");
+            romsList.addListener((ListChangeListener<? super String>) (change) -> {
+                romLoad.getItems().clear();
+                for (String str : change.getList()) {
+                    MenuItem rom = new MenuItem(str);
+                    rom.setOnAction(e -> {
+                        lastPlayedRom = rom.getText();
+                        launchRom(rom.getText());
+                        saveAllOptions();
+                    });
+                    romLoad.getItems().add(rom);
+                }
+            });
+            MenuItem romPath = new MenuItem("Roms Folder...");
+            romPath.setOnAction(e -> {
+                DirectoryChooser dirChos = new DirectoryChooser();
+                dirChos.setInitialDirectory(new File(romsPath));
+                File romsFolder = dirChos.showDialog(null);
+                if (romsFolder != null && romsFolder.exists())
+                    romsPath = romsFolder.getPath();
+                if (!(romsPath.endsWith("/") || romsPath.endsWith("\\")))
+                    romsPath += '/';
+                reloadRomsInActivePath();
+                saveAllOptions();
+            });
 
-        Menu fileMenu = new Menu("File");
-        Menu romLoad = new Menu("Choose Rom");
-        romsList.addListener((ListChangeListener<? super String>) (change) -> {
-            romLoad.getItems().clear();
-            for (String str : change.getList()) {
-                MenuItem rom = new MenuItem(str);
-                rom.setOnAction(e -> {
-                    lastPlayedRom = rom.getText();
-                    launchRom(rom.getText());
-                    saveAllOptions();
-                });
-                romLoad.getItems().add(rom);
-            }
-        });
-        MenuItem romPath = new MenuItem("Roms Folder...");
-        romPath.setOnAction(e -> {
-            DirectoryChooser dirChos = new DirectoryChooser();
-            dirChos.setInitialDirectory(new File(romsPath));
-            File romsFolder = dirChos.showDialog(null);
-            if (romsFolder != null && romsFolder.exists())
-                romsPath = romsFolder.getPath();
-            if (!(romsPath.endsWith("/") || romsPath.endsWith("\\")))
-                romsPath += '\\';
-            reloadRomsInActivePath();
-            saveAllOptions();
-        });
+            MenuItem save = new MenuItem("Save");
+            save.setOnAction(e -> {
 
-        MenuItem save = new MenuItem("Save");
-        save.setOnAction(e -> {
+            });
+            MenuItem load = new MenuItem("Load");
+            save.setOnAction(e -> {
 
-        });
-        MenuItem load = new MenuItem("Load");
-        save.setOnAction(e -> {
+            });
 
-        });
+            MenuItem quickSave = new MenuItem("QuickSave");
+            quickSave.setOnAction(e -> {
+                try {
+                    statesDial.quickSave(gb);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+            MenuItem quickLoad = new MenuItem("QuickLoad");
+            quickLoad.setOnAction(e -> {
+                try {
+                    State state = statesDial.quickLoad();
+                    gb.loadState(state.getGbState(), state.getScreenshot());
+                    onLoadingState();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+            MenuItem quit = new MenuItem("Quit");
+            quit.setOnAction(e -> primaryStage.fireEvent(
+                    new WindowEvent(primaryStage, WindowEvent.WINDOW_CLOSE_REQUEST)));
 
-        MenuItem quickSave = new MenuItem("QuickSave");
-        quickSave.setOnAction(e -> {
-            try {
-                statesDial.quickSave(gb);
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        });
-        MenuItem quickLoad = new MenuItem("QuickLoad");
-        quickLoad.setOnAction(e -> {
-            try {
-                State state = statesDial.quickLoad();
-                gb.loadState(state.getGbState());
-                onLoadingState();
-            } catch (IOException ex) {
-                ex.printStackTrace();
-            }
-        });
-        MenuItem quit = new MenuItem("Quit");
-        quit.setOnAction(e -> System.exit(0));
-        fileMenu.getItems().addAll(romLoad, romPath, new SeparatorMenuItem(),
-                save, load, quickSave, quickLoad, new SeparatorMenuItem(), quit);
+            fileMenu.getItems().addAll(romLoad, romPath, new SeparatorMenuItem(),
+                    save, load, quickSave, quickLoad, new SeparatorMenuItem(), quit);
 
-        Menu optionsMenu = new Menu("Options");
-        MenuItem controls = new MenuItem("Controls");
-        controls.setOnAction(e -> {
-            JoypadMapDialog dial = new JoypadMapDialog(keysMap);
-            dial.showAndWait();
-            keysMap = dial.getResult();
-            saveAllOptions();
-        });
-        optionsMenu.getItems().addAll(controls);
+            menuBar.getMenus().add(fileMenu);
+        }
 
-        Menu helpMenu = new Menu("Help");
-        MenuItem about = new MenuItem("About");
-        about.setOnAction(e -> {
-            AboutDialog dial = new AboutDialog();
-            dial.showAndWait();
-        });
-        helpMenu.getItems().addAll(about);
+        // Options Menu
+        {
+            Menu optionsMenu = new Menu("Options");
+            MenuItem controls = new MenuItem("Controls");
+            controls.setOnAction(e -> {
+                JoypadMapDialog dial = new JoypadMapDialog(keysMap);
+                dial.showAndWait();
+                keysMap = dial.getResult();
+                saveAllOptions();
+            });
+            CheckMenuItem autoLoad = new CheckMenuItem("Auto Load when starting Rom");
+            autoLoad.setSelected(autoLoadWhenLaunchingRom);
+            autoLoad.selectedProperty().addListener((obs, oldV, newV) -> {
+                autoLoadWhenLaunchingRom = newV;
+                saveAllOptions();
+            });
 
-        menuBar.getMenus().addAll(fileMenu, optionsMenu, helpMenu);
+            optionsMenu.getItems().addAll(controls, autoLoad);
+
+            menuBar.getMenus().add(optionsMenu);
+        }
+
+        // Help Menu
+        {
+            Menu helpMenu = new Menu("Help");
+            MenuItem about = new MenuItem("About");
+            about.setOnAction(e -> {
+                AboutDialog dial = new AboutDialog();
+                dial.showAndWait();
+            });
+            helpMenu.getItems().addAll(about);
+
+            menuBar.getMenus().add(helpMenu);
+        }
 
         root.setTop(menuBar);
     }
@@ -244,6 +285,8 @@ public final class Main extends Application {
             writer.write(GENERAL_TAG + '\n');
             writer.write(ROMS_PATH_TAG + romsPath + '\n');
             writer.write(LAST_PLAYED_ROM_TAG + lastPlayedRom + '\n');
+            writer.write(AUTO_LOAD_TAG + autoLoadWhenLaunchingRom + '\n');
+
             // Key Map
             writer.write(KEY_MAP_TAG + '\n');
             String str = JoypadMapDialog.serializeKeyMap(keysMap);
@@ -294,6 +337,8 @@ public final class Main extends Application {
                         romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
                     else if (line.startsWith(LAST_PLAYED_ROM_TAG))
                         lastPlayedRom = line.substring(LAST_PLAYED_ROM_TAG.length()).trim();
+                    else if (line.startsWith(AUTO_LOAD_TAG))
+                        autoLoadWhenLaunchingRom = Boolean.valueOf(line.substring(AUTO_LOAD_TAG.length()).trim());
                 }
                 break;
             case KEY_MAP_TAG:
@@ -310,6 +355,7 @@ public final class Main extends Application {
         // General
         romsPath = DEFAULT_ROMS_PATH;
         lastPlayedRom = "";
+        autoLoadWhenLaunchingRom = false;
         // Key Map
         keysMap = JoypadMapDialog.defaultKeyMap();
     }

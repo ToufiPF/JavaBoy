@@ -1,6 +1,7 @@
 package ch.epfl.javaboy.gui.savestates;
 
 import ch.epfl.javaboy.bits.Bits;
+import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.component.lcd.LcdImage;
 
 import java.io.*;
@@ -62,7 +63,7 @@ public final class State {
             is.read(buff);
             final int width = Bits.recomposeInteger(buff);
             //TODO: is.read(LcdImage);
-            return new Metadata(ldt, null);
+            return new Metadata(ldt, LcdController.BLANK_IMAGE);
         } catch (IOException e) {
             throw e;
         }

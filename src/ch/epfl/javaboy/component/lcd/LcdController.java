@@ -131,6 +131,10 @@ public final class LcdController implements Component, Clocked {
     public LcdImage currentImage() {
         return current;
     }
+
+    public void setCurrentImage(LcdImage img) {
+        current = img;
+    }
     
     @Override
     public int read(int address) {
