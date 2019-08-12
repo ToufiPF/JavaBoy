@@ -59,6 +59,11 @@ public final class LcdController implements Component, Clocked {
     public static final int LCD_WIDTH = 160;
     public static final int LCD_HEIGHT = 144;
 
+    public static final LcdImage BLANK_IMAGE =
+            new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
+    public static final LcdImageLine BLANK_LINE =
+            new LcdImageLine.Builder(LCD_WIDTH).build();
+
     private static final int TILE_SIZE = 8;
     private static final int NB_TILES = 32;
     private static final int ALL_TILES_SIZE = TILE_SIZE * NB_TILES;
@@ -67,13 +72,7 @@ public final class LcdController implements Component, Clocked {
 
     private static final int BYTES_PER_TILE_LINE = 2, BYTES_PER_TILE = BYTES_PER_TILE_LINE * TILE_SIZE;
 
-    private static final LcdImage BLANK_IMAGE = 
-            new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
-    private static final LcdImageLine BLANK_LINE = 
-            new LcdImageLine.Builder(LCD_WIDTH).build();
-
     private static final int OFFSET_WX = -7;
-    
     private static final int OFFSET_SPRITE_X = -8;
     private static final int OFFSET_SPRITE_Y = -16;
     

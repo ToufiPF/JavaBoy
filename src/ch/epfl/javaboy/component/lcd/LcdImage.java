@@ -17,7 +17,7 @@ public final class LcdImage {
      * Builder for an LcdImage
      * @author Toufi
      */
-    public static final class Builder {
+    static final class Builder {
         private final List<LcdImageLine> lines;
         
         /**
@@ -26,7 +26,7 @@ public final class LcdImage {
          * @param width (int) width of the image to build
          * @param height (int) height of the image to build
          */
-        public Builder(int width, int height) {
+        Builder(int width, int height) {
             lines = new ArrayList<>(height);
             for (int i = 0 ; i < height ; ++i)
                 lines.add(new LcdImageLine(width));
@@ -38,7 +38,7 @@ public final class LcdImage {
          * @param line (LcdImageLine) the line to set
          * @return (Builder) this builder
          */
-        public Builder setLine(int y, LcdImageLine line) {
+        Builder setLine(int y, LcdImageLine line) {
             Objects.requireNonNull(line);
             lines.set(y, line);
             return this;
@@ -48,7 +48,7 @@ public final class LcdImage {
          * Builds the LcdImage
          * @return (LcdImage) the LcdImage built
          */
-        public LcdImage build() {
+        LcdImage build() {
             return new LcdImage(lines);
         }
     }
@@ -61,7 +61,7 @@ public final class LcdImage {
      * @param lines (List<LcdImageLine>) the list of
      * LcdImageLine used to construct the LcdImage
      */
-    public LcdImage(List<LcdImageLine> lines) {
+    private LcdImage(List<LcdImageLine> lines) {
         this.lines = Collections.unmodifiableList(new LinkedList<>(lines));
     }
     

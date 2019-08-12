@@ -194,14 +194,9 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
                 entry.getValue().addAll(defaultKeysCode.get(entry.getKey()));
             }
         });
-        
         grid.add(resetDefault, 2, 5);
         
         getDialogPane().setContent(grid);
-
-        for (Node n : grid.getChildren())
-            n.setFocusTraversable(false);
-        getDialogPane().setFocusTraversable(false);
 
         setResultConverter(btn -> {
             if (btn.equals(ButtonType.OK))
