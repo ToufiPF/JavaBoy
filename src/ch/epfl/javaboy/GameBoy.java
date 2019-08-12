@@ -145,8 +145,9 @@ public final class GameBoy {
     }
 
 
-    public void saveState(OutputStream os) throws IOException {
+    public byte[] saveState() throws IOException {
         byte[] buffer;
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
 
         buffer = cpu.saveState();
         os.write(Bits.decomposeInteger(buffer.length));
@@ -184,11 +185,13 @@ public final class GameBoy {
         for (int i = 0 ; i < Long.BYTES ; ++i)
             buffer[i] = (byte) Bits.extract(simulatedCycles, i * Byte.SIZE, Byte.SIZE);
         os.write(buffer);
-        System.out.println("CyclesSaved : " + simulatedCycles);
-    }
 
+        return os.toByteArray();
+    }
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public void loadState(InputStream is) throws IOException {
+    public void loadState(byte[] state) throws IOException {
+        ByteArrayInputStream is = new ByteArrayInputStream(state);
+
         byte[] buffLength = new byte[Integer.BYTES];
         byte[] buffState;
 
@@ -237,6 +240,5 @@ public final class GameBoy {
         simulatedCycles = 0L;
         for (int i = 0 ; i < Long.BYTES ; ++i)
             simulatedCycles |= Byte.toUnsignedLong(buffState[i]) << (i * Byte.SIZE);
-        System.out.println("CyclesLoaded : " + simulatedCycles);
     }
 }
