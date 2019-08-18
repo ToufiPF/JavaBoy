@@ -1,5 +1,6 @@
 package ch.epfl.javaboy.component.memory;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import ch.epfl.javaboy.Preconditions;
@@ -66,7 +67,19 @@ public final class RamController implements Component {
         if (isInBounds(address))
             ram.write(address - start, value);
     }
-    
+
+    @Override
+    public byte[] saveState() {
+        return Arrays.copyOf(ram.getData(), ram.getData().length);
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != ram.size())
+            throw new IllegalStateException("Invalid state.");
+        System.arraycopy(state, 0, ram.getData(), 0, ram.size());
+    }
+
     private boolean isInBounds(int address) {
         Preconditions.checkBits16(address);
         return start <= address && address < end;

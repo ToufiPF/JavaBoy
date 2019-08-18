@@ -1,5 +1,7 @@
 package ch.epfl.javaboy.component.cartridge;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Objects;
 
 import ch.epfl.javaboy.Preconditions;
@@ -35,5 +37,16 @@ final class MBC0 implements Component {
 
     @Override
     public void write(int address, int value) {        
+    }
+
+    @Override
+    public byte[] saveState() {
+        return new byte[0];
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != 0)
+            throw new IllegalStateException("Invalid state.");
     }
 }

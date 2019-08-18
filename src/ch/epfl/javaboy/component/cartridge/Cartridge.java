@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Component;
@@ -58,7 +59,6 @@ public final class Cartridge implements Component {
             }
             
             throw new IllegalArgumentException("Rom type non supported.");
-
         }
     }
     
@@ -96,5 +96,15 @@ public final class Cartridge implements Component {
         Preconditions.checkBits16(address);
         Preconditions.checkBits8(value);
         mbc.write(address, value);
+    }
+
+    @Override
+    public byte[] saveState() {
+        return mbc.saveState();
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        mbc.loadState(state);
     }
 }

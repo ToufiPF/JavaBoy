@@ -44,7 +44,7 @@ public final class Bits {
             0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF,
     };
 
-    private Bits() { };
+    private Bits() { }
 
     /**
      * Returns a mask composed of size bits,
@@ -130,7 +130,21 @@ public final class Bits {
      */
     public static int extract(int bits, int start, int size) {
         Preconditions.checkFromIndexSize(start, size, Integer.SIZE);
-        return (bits & (fullmask(size) << start)) >>> start;
+        return (bits >>> start) & fullmask(size);
+    }
+
+    /**
+     * Extract a vector from the given one,
+     * starting from start and of the given size
+     * @param bits (long) vector to extract from
+     * @param start (int) start of the extraction
+     * @param size (int) size of the extraction
+     * @return (long) the extracted vector
+     */
+    public static long extract(long bits, int start, int size) {
+        Preconditions.checkFromIndexSize(start, size, Long.SIZE);
+        long mask = size == Long.SIZE ? -1 : (1L << size) - 1;
+        return (bits >>> start) & mask;
     }
 
     /**
@@ -204,5 +218,19 @@ public final class Bits {
         Preconditions.checkBits8(lowB);
         Preconditions.checkBits8(highB);
         return (highB << 8) | lowB;
+    }
+
+    public static byte[] decomposeInteger(int value) {
+        byte[] res = new byte[Integer.BYTES];
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            res[i] = (byte) extract(value, i * Byte.SIZE, Byte.SIZE);
+        return res;
+    }
+    public static int recomposeInteger(byte[] bytes) {
+        Preconditions.checkArgument(bytes.length == Integer.BYTES);
+        int res = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            res |= Byte.toUnsignedInt(bytes[i]) << (i * Byte.SIZE);
+        return res;
     }
 }

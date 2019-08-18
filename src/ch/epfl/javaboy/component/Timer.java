@@ -1,7 +1,5 @@
 package ch.epfl.javaboy.component;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.Register;
@@ -10,19 +8,25 @@ import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 
+import java.util.List;
+import java.util.Objects;
+
 /**
  * Represents the timer of a GameBoy
  * @author Toufi
  */
 public final class Timer implements Component, Clocked {
     
-    private static enum RegT implements Register {
-        TIMA, TMA, TAC
+    private enum RegT implements Register {
+        TIMA, TMA, TAC;
+        public static final List<RegT> ALL = List.of(values());
     }
     
     private static final int MAX_MAIN_COUNTER = 0xFFFF;
     private static final int MAX_TIMA = 0xFF;
     private static final int UNITS_BY_CYCLE = 4;
+
+    private static final int STATE_LENGTH = Integer.BYTES + RegT.ALL.size();
     
     private final Cpu cpu;
     private final RegisterFile<RegT> regTimer;
@@ -90,7 +94,33 @@ public final class Timer implements Component, Clocked {
             regTimer.set(RegT.TMA, value);
         }
     }
-    
+
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[STATE_LENGTH];
+
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            state[i] = (byte) Bits.extract(mainCounter, i * Byte.SIZE, Byte.SIZE);
+
+        for (int i = 0 ; i < RegT.ALL.size(); ++i)
+            state[Integer.BYTES + i] = (byte) regTimer.get(RegT.ALL.get(i));
+
+        return state;
+    }
+
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != STATE_LENGTH)
+            throw new IllegalStateException("Invalid state.");
+
+        mainCounter = 0;
+        for (int i = 0 ; i < Integer.BYTES ; ++i)
+            mainCounter |= Byte.toUnsignedInt(state[i]) << (i * Byte.SIZE);
+
+        for (int i = 0 ; i < RegT.ALL.size() ; ++i)
+            regTimer.set(RegT.ALL.get(i), Byte.toUnsignedInt(state[Integer.BYTES + i]));
+    }
+
     private void incrementIfFallingEdge(boolean previous, boolean current) {
         if (previous && !current) {
             int tima = regTimer.get(RegT.TIMA) + 1;
@@ -102,7 +132,7 @@ public final class Timer implements Component, Clocked {
         }
     }
     
-    private final boolean computeState() {
+    private boolean computeState() {
         return Bits.test(regTimer.get(RegT.TAC), 2) && Bits.test(mainCounter, getCriticalBit());
     }
     

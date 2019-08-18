@@ -2,6 +2,8 @@ package ch.epfl.javaboy.component;
 
 import ch.epfl.javaboy.Bus;
 
+import java.util.ArrayList;
+
 /** Component
  * Basic interface of a JavaBoy Component
  * @author Toufi
@@ -34,4 +36,20 @@ public interface Component {
     default void attachTo(Bus bus) {
         bus.attach(this);
     }
+
+
+    /**
+     * Saves the state of the Component
+     * in an array of bytes
+     */
+    byte[] saveState();
+
+    /**
+     * Loads the state of the Component
+     * from an array of bytes
+     * @param state (byte[]) the state to load
+     * @throws IllegalStateException if the state
+     * is not valid
+     */
+    void loadState(byte[] state);
 }

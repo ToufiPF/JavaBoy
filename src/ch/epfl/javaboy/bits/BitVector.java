@@ -236,7 +236,7 @@ public final class BitVector {
     public BitVector and(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
-        int ands[] = new int[bits.length];
+        int[] ands = new int[bits.length];
         for (int i = 0 ; i < ands.length ; ++i)
             ands[i] = this.bits[i] & other.bits[i];
         return new BitVector(ands);
@@ -252,7 +252,7 @@ public final class BitVector {
     public BitVector or(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
-        int ors[] = new int[bits.length];
+        int[] ors = new int[bits.length];
         for (int i = 0 ; i < ors.length ; ++i)
             ors[i] = this.bits[i] | other.bits[i];
         return new BitVector(ors);
@@ -268,7 +268,7 @@ public final class BitVector {
     public BitVector xor(BitVector other) {
         if (this.bits.length != other.bits.length)
             throw new IllegalArgumentException();
-        int xors[] = new int[bits.length];
+        int[] xors = new int[bits.length];
         for (int i = 0 ; i < xors.length ; ++i)
             xors[i] = this.bits[i] ^ other.bits[i];
         return new BitVector(xors);

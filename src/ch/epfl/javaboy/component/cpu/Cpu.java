@@ -1,14 +1,6 @@
 package ch.epfl.javaboy.component.cpu;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import ch.epfl.javaboy.AddressMap;
-import ch.epfl.javaboy.Bus;
-import ch.epfl.javaboy.Preconditions;
-import ch.epfl.javaboy.Register;
-import ch.epfl.javaboy.RegisterFile;
+import ch.epfl.javaboy.*;
 import ch.epfl.javaboy.bits.Bit;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Clocked;
@@ -16,6 +8,8 @@ import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.cpu.Alu.Flag;
 import ch.epfl.javaboy.component.cpu.Alu.RotDir;
 import ch.epfl.javaboy.component.memory.Ram;
+
+import java.util.List;
 
 /**
  * Represents a Cpu for a GameBoy.
@@ -28,23 +22,23 @@ public final class Cpu implements Component, Clocked {
      * Possible interruptions
      * @author Toufi
      */
-    public static enum Interrupt implements Bit {
-        VBLANK, LCD_STAT, TIMER, SERIAL, JOYPAD;
-        public final static List<Interrupt> ALL = Collections.unmodifiableList(Arrays.asList(values()));
+    public enum Interrupt implements Bit {
+        VBLANK, LCD_STAT, TIMER, SERIAL, JOYPAD
     }
 
-    private static enum Reg implements Register {
+    private enum Reg implements Register {
         A, F, B, C, D, E, H, L;
-        public static final List<Reg> ALL = Arrays.asList(values());
+        public static final List<Reg> ALL = List.of(values());
     }
-    private static enum Reg16 implements Register {
-        AF, BC, DE, HL;
+    private enum Reg16 implements Register {
+        AF, BC, DE, HL
     }
     private enum RegI implements Register {
-        IE, IF
+        IE, IF;
+        public static final List<RegI> ALL = List.of(values());
     }
-    private static enum FlagSrc implements Bit {
-        FALSE, TRUE, ALU, CPU;
+    private enum FlagSrc implements Bit {
+        FALSE, TRUE, ALU, CPU
     }
 
     private static final Opcode[] DIRECT_OPCODE_TABLE =
@@ -52,6 +46,14 @@ public final class Cpu implements Component, Clocked {
 
     private static final Opcode[] PREFIXED_OPCODE_TABLE =
             buildOpcodeTable(Opcode.Kind.PREFIXED);
+    private static final int STATE_LENGTH = Reg.ALL.size() + RegI.ALL.size() +
+            AddressMap.HIGH_RAM_SIZE + Long.BYTES + 5;
+    private static final int REG8_CODE_SIZE = 3;
+    private static final int REG16_CODE_START = 4;
+    private static final int REG16_CODE_SIZE = 2;
+    private static final int INDEX_INCREM_HL = 4;
+    private static final int OPCODE_PREFIX = 0xCB;
+    private static final int INTERRUPTION_MANAGEMENT_DURATION = 5;
 
     private static Opcode[] buildOpcodeTable(Opcode.Kind kind) {
         Opcode[] tab = new Opcode[Opcode.values().length];
@@ -60,22 +62,13 @@ public final class Cpu implements Component, Clocked {
                 tab[oc.encoding] = oc;
         return tab;
     }
-
-    private static final int REG8_CODE_SIZE = 3;
-    private static final int REG16_CODE_START = 4;
-    private static final int REG16_CODE_SIZE = 2;
-    private static final int INDEX_INCREM_HL = 4;
-    private static final int OPCODE_PREFIX = 0xCB;
-    private static final int INTERRUPTION_MANAGEMENT_DURATION = 5;
-
+    private final RegisterFile<Reg> reg8bits;
+    private final RegisterFile<RegI> interruptionReg;
     private long nextNonIdleCycle;
     private int PC;
     private int SP;
     private boolean IME;
     private boolean isHalted;
-
-    private final RegisterFile<Reg> reg8bits;
-    private final RegisterFile<RegI> interruptionReg;
     private Bus bus;
     private Ram highRam;
     
@@ -89,8 +82,8 @@ public final class Cpu implements Component, Clocked {
         IME = false;
         isHalted = false;
 
-        reg8bits = new RegisterFile<Cpu.Reg>(Reg.values());
-        interruptionReg = new RegisterFile<Cpu.RegI>(RegI.values());
+        reg8bits = new RegisterFile<>(Reg.values());
+        interruptionReg = new RegisterFile<>(RegI.values());
         bus = null;
         highRam = new Ram(AddressMap.HIGH_RAM_SIZE);
     }
@@ -117,16 +110,6 @@ public final class Cpu implements Component, Clocked {
         }
     }
     
-    private void manageInterruption(Interrupt toManage) {
-            IME = false;
-            interruptionReg.setBit(RegI.IF, toManage, false);
-            
-            push16(PC);
-            PC = AddressMap.INTERRUPTS[toManage.index()];
-
-            nextNonIdleCycle += INTERRUPTION_MANAGEMENT_DURATION;
-    }
-    
     @Override
     public int read(int address) {
         Preconditions.checkBits16(address);
@@ -141,6 +124,7 @@ public final class Cpu implements Component, Clocked {
         else
             return NO_DATA;
     }
+    
     @Override
     public void write(int address, int value) {
         Preconditions.checkBits16(address);
@@ -160,7 +144,66 @@ public final class Cpu implements Component, Clocked {
         this.bus = bus;
         Component.super.attachTo(bus);
     }
+
+    @Override
+    public byte[] saveState() {
+        byte[] state = new byte[STATE_LENGTH];
+
+        int baseIndex = 0;
+        int statusByte = ((IME ? 1 : 0) << 1) | (isHalted ? 1 : 0);
+        state[baseIndex] = (byte) statusByte;
+        baseIndex += 1;
+
+        state[baseIndex++] = (byte) Bits.extract(PC, 0, Byte.SIZE);
+        state[baseIndex++] = (byte) Bits.extract(PC, Byte.SIZE, Byte.SIZE);
+        state[baseIndex++] = (byte) Bits.extract(SP, 0, Byte.SIZE);
+        state[baseIndex++] = (byte) Bits.extract(SP, Byte.SIZE, Byte.SIZE);
+
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            state[baseIndex + i] = (byte) Bits.extract(nextNonIdleCycle, i * Byte.SIZE, Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        System.arraycopy(highRam.getData(), 0, state, baseIndex, highRam.size());
+        baseIndex += highRam.size();
+
+        for (int i = 0 ; i < Reg.ALL.size() ; ++i)
+            state[baseIndex + i] = (byte) reg8bits.get(Reg.ALL.get(i));
+        baseIndex += Reg.ALL.size();
+
+        for (int i = 0 ; i < RegI.ALL.size() ; ++i)
+            state[baseIndex + i] = (byte) interruptionReg.get(RegI.ALL.get(i));
+
+        return state;
+    }
     
+    @Override
+    public void loadState(byte[] state) {
+        if (state.length != STATE_LENGTH)
+            throw new IllegalStateException("Invalid state.");
+
+        IME = Bits.test(state[0], 1);
+        isHalted = Bits.test(state[0], 0);
+
+        PC = (Byte.toUnsignedInt(state[2]) << Byte.SIZE) | Byte.toUnsignedInt(state[1]);
+        SP = (Byte.toUnsignedInt(state[4]) << Byte.SIZE) | Byte.toUnsignedInt(state[3]);
+
+        int baseIndex = 5;
+        nextNonIdleCycle = 0;
+        for (int i = 0 ; i < Long.BYTES ; ++i)
+            nextNonIdleCycle |= Byte.toUnsignedLong(state[baseIndex + i]) << (i * Byte.SIZE);
+        baseIndex += Long.BYTES;
+
+        System.arraycopy(state, baseIndex, highRam.getData(), 0, highRam.size());
+        baseIndex += highRam.size();
+
+        for (int i = 0 ; i < Reg.ALL.size() ; ++i)
+            reg8bits.set(Reg.ALL.get(i), Byte.toUnsignedInt(state[baseIndex + i]));
+        baseIndex += Reg.ALL.size();
+
+        for (int i = 0 ; i < RegI.ALL.size() ; ++i)
+            interruptionReg.set(RegI.ALL.get(i), Byte.toUnsignedInt(state[baseIndex + i]));
+    }
+
     /**
      * Request an interruption
      * (set the corresponding bit in IF to true)
@@ -170,23 +213,24 @@ public final class Cpu implements Component, Clocked {
         interruptionReg.setBit(RegI.IF, i, true);
     }
 
-    public int[] _testGetPcSpAFBCDEHL() {
-        int[] tab = new int[10];
-        tab[0] = PC;
-        tab[1] = SP;
-        for (int i = 2 ; i < 10 ; ++i)
-            tab[i] = reg8bits.get(Reg.ALL.get(i - 2));
-        return tab;
+    private void manageInterruption(Interrupt toManage) {
+            IME = false;
+            interruptionReg.setBit(RegI.IF, toManage, false);
+
+            push16(PC);
+            PC = AddressMap.INTERRUPTS[toManage.index()];
+
+            nextNonIdleCycle += INTERRUPTION_MANAGEMENT_DURATION;
     }
 
     private void dispatch(Opcode opcode) {
         int nextPC = Bits.clip(2 * Byte.SIZE, PC + opcode.totalBytes);
-        
+
         switch (opcode.family) {
         // No operations :
         case NOP:
             break;
-            // Load instructions : 
+            // Load instructions :
         case LD_R8_HLR: {
             reg8bits.set(extractReg(opcode, 3), read8AtHL());
         } break;
@@ -251,7 +295,7 @@ public final class Cpu implements Component, Clocked {
             push16(getReg16(extractReg16(opcode)));
         } break;
         // Move Instructions :
-        case LD_R8_R8: { 
+        case LD_R8_R8: {
             Reg r1 = extractReg(opcode, 3);
             Reg r2 = extractReg(opcode, 0);
             reg8bits.set(r1, reg8bits.get(r2));
@@ -306,7 +350,7 @@ public final class Cpu implements Component, Clocked {
                 setReg16SP(Reg16.AF, Bits.extract(res, Byte.SIZE, Byte.SIZE * 2));
 
             combineAluFlags(res, FlagSrc.FALSE, FlagSrc.FALSE, FlagSrc.ALU, FlagSrc.ALU);
-        } break;    
+        } break;
         // Subtract/Compare Instructions :
         case SUB_A_N8: {
             int left = reg8bits.get(Reg.A);

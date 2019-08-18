@@ -52,4 +52,13 @@ public final class Ram {
         Preconditions.checkBits8(value);
         data[index] = (byte) value;
     }
+
+    /**
+     * Returns the data in the Ram.
+     * Meant to be used only when saving state.
+     * @return (byte[]) data of the ram
+     */
+    public byte[] getData() {
+        return data;
+    }
 }
