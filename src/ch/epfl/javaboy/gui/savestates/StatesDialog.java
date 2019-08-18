@@ -1,10 +1,12 @@
 package ch.epfl.javaboy.gui.savestates;
 
 import ch.epfl.javaboy.GameBoy;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.ScrollPane;
 import javafx.scene.layout.VBox;
+import javafx.stage.Screen;
 
 import java.io.File;
 import java.io.IOException;
@@ -14,24 +16,27 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("WeakerAccess")
 abstract class StatesDialog<T> extends Dialog<T> {
-    public static final String ABSOLUTE_SAVE_PATH = new File("").getAbsolutePath() + "/Saves/";
-    protected static final String AUTO_STATE = "auto";
-    protected static final String QUICK_STATE = "quick";
-    protected static final String REGULAR_STATE = "save";
+    private static final String ABSOLUTE_SAVE_PATH = new File("").getAbsolutePath() + "/Saves/";
+    static final String AUTO_STATE = "auto";
+    static final String QUICK_STATE = "quick";
+    static final String REGULAR_STATE = "save";
 
-    public static final int REGULAR_SAVE_SLOTS = 10;
-    public static final int SPECIAL_SAVE_SLOTS = 2;
-    public static final int TOTAL_SAVE_SLOTS = REGULAR_SAVE_SLOTS + SPECIAL_SAVE_SLOTS;
+    static final int REGULAR_SAVE_SLOTS = 5;
+    static final int SPECIAL_SAVE_SLOTS = 2;
 
-    static String statesPathForRom(String romName) {
+    private final static int DIALOG_WIDTH = 300;
+    private final static int DIALOG_HEIGHT = 500;
+
+    private static String statesPathForRom(String romName) {
         return ABSOLUTE_SAVE_PATH + romName.replace('.', '-') + '/';
     }
 
     private String statesPath;
 
-    protected final VBox layout;
-    protected final List<StateNode> specialNodes, regularNodes;
+    final VBox layout;
+    final List<StateNode> specialNodes, regularNodes;
 
     /**
      * Creates a new StateDialog
@@ -39,13 +44,22 @@ abstract class StatesDialog<T> extends Dialog<T> {
     StatesDialog() {
         // Dialog()
         super();
+        setResizable(false);
         specialNodes = new ArrayList<>(SPECIAL_SAVE_SLOTS);
         regularNodes = new ArrayList<>(REGULAR_SAVE_SLOTS);
 
         // Button Types
         getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
         setResultConverter(buttonType -> null);
-        getDialogPane().setMaxSize(300, 500);
+        getDialogPane().setPrefSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+        getDialogPane().setMaxSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+        getDialogPane().setMinSize(DIALOG_WIDTH, DIALOG_HEIGHT);
+
+        {
+            Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
+            setX((bounds.getWidth() - DIALOG_WIDTH) / 2);
+            setY((bounds.getHeight() - DIALOG_HEIGHT) / 2);
+        }
 
         // ScrollPane
         layout = new VBox();
@@ -94,7 +108,7 @@ abstract class StatesDialog<T> extends Dialog<T> {
     public void save(String saveName, GameBoy gb) throws IOException {
         save(saveName, new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
-    public void save(String saveName, State state) throws IOException {
+    private void save(String saveName, State state) throws IOException {
         State.saveState(statesPath + saveName, state);
         System.out.println("Saved : " + saveName + ", " + state.getDateAndTime());
         refreshStateNodes();

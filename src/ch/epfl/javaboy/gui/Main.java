@@ -4,6 +4,7 @@ import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
+import ch.epfl.javaboy.gui.savestates.LoadDialog;
 import ch.epfl.javaboy.gui.savestates.SaveDialog;
 import ch.epfl.javaboy.gui.savestates.State;
 import javafx.animation.AnimationTimer;
@@ -12,7 +13,11 @@ import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.CheckMenuItem;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
@@ -21,7 +26,14 @@ import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.io.Writer;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +53,7 @@ public final class Main extends Application {
         launch(args);
     }
 
+    @SuppressWarnings("unused")
     private static void displayErrorAndExit(String... msg) {
         for (String s : msg)
             System.err.println(s);
@@ -52,7 +65,8 @@ public final class Main extends Application {
     private Scene scene;
     private Stage primaryStage;
 
-    private SaveDialog saveDialog;
+    private final SaveDialog saveDialog;
+    private final LoadDialog loadDialog;
 
     private String romsPath;
     private final ObservableList<String> romsList;
@@ -66,7 +80,6 @@ public final class Main extends Application {
 
     public Main() {
         primaryStage = null;
-        saveDialog = null;
 
         romsPath = null;
         romsList = FXCollections.observableList(new LinkedList<>());
@@ -81,6 +94,8 @@ public final class Main extends Application {
         loadAllOptions();
         saveDialog = new SaveDialog();
         saveDialog.setRomName(lastPlayedRom);
+        loadDialog = new LoadDialog();
+        loadDialog.setRomName(lastPlayedRom);
 
         createSceneRootView();
         createMenuBar();
@@ -208,6 +223,17 @@ public final class Main extends Application {
             MenuItem load = new MenuItem("Load");
             load.setAccelerator(new KeyCodeCombination(KeyCode.F7));
             load.setOnAction(e -> {
+                Optional<String> result = loadDialog.showAndWait();
+                if (result.isPresent()) {
+                    String loadName = result.get();
+                    try {
+                        State st = loadDialog.load(loadName);
+                        gb.loadState(st.getGbState(), st.getScreenshot());
+                        actualizeAnimationTimer();
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
+                }
             });
             MenuItem save = new MenuItem("Save");
             save.setAccelerator(new KeyCodeCombination(KeyCode.F8));
@@ -354,7 +380,7 @@ public final class Main extends Application {
                     else if (line.startsWith(LAST_PLAYED_ROM_TAG))
                         lastPlayedRom = line.substring(LAST_PLAYED_ROM_TAG.length()).trim();
                     else if (line.startsWith(AUTO_LOAD_TAG))
-                        autoLoadWhenLaunchingRom = Boolean.valueOf(line.substring(AUTO_LOAD_TAG.length()).trim());
+                        autoLoadWhenLaunchingRom = Boolean.parseBoolean(line.substring(AUTO_LOAD_TAG.length()).trim());
                 }
                 break;
             case KEY_MAP_TAG:

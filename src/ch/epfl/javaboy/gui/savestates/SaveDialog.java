@@ -4,7 +4,6 @@ import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.layout.HBox;
-import javafx.scene.text.Text;
 
 public final class SaveDialog extends StatesDialog<String> {
 
@@ -36,20 +35,6 @@ public final class SaveDialog extends StatesDialog<String> {
         super.refreshStateNodes();
 
         layout.getChildren().clear();
-        for (StateNode n : specialNodes) {
-            if (n.getTitle().equals("AutoSave")) {
-                n.setOnMouseClicked(e -> {
-                    setResult(AUTO_STATE);
-                    close();
-                });
-            } else if (n.getTitle().equals("QuickSave")) {
-                n.setOnMouseClicked(e -> {
-                    setResult(QUICK_STATE);
-                    close();
-                });
-            }
-            layout.getChildren().add(n);
-        }
         for (int i = 0 ; i < regularNodes.size() ; ++i) {
             int finalI = i;
             regularNodes.get(i).setOnMouseClicked(e -> {
