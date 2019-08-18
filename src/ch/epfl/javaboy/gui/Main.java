@@ -5,9 +5,8 @@ import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.ImageConverter;
 import ch.epfl.javaboy.component.lcd.LcdController;
-import ch.epfl.javaboy.gui.savestates.LoadDialog;
-import ch.epfl.javaboy.gui.savestates.SaveDialog;
 import ch.epfl.javaboy.gui.savestates.State;
+import ch.epfl.javaboy.gui.savestates.StatesDialog;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
@@ -67,8 +66,7 @@ public final class Main extends Application {
 
     private MenuItem quickLoad;
 
-    private final SaveDialog saveDialog;
-    private final LoadDialog loadDialog;
+    private final StatesDialog statesDial;
 
     private String romsPath;
     private final ObservableList<String> romsList;
@@ -95,10 +93,8 @@ public final class Main extends Application {
 
         loadOptions();
         loadKeyMap();
-        saveDialog = new SaveDialog();
-        saveDialog.setRomName(lastPlayedRom);
-        loadDialog = new LoadDialog();
-        loadDialog.setRomName(lastPlayedRom);
+        statesDial = new StatesDialog();
+        statesDial.setRomName(lastPlayedRom);
 
         createSceneRootView();
         createMenuBar();
@@ -123,7 +119,7 @@ public final class Main extends Application {
         primaryStage.setOnCloseRequest(e -> {
             if (gb != null) {
                 try {
-                    saveDialog.autoSave(gb);
+                    statesDial.autoSave(gb);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -150,13 +146,12 @@ public final class Main extends Application {
         }
         timer = createAnimationTimer(gb, System.nanoTime());
         timer.start();
-        saveDialog.setRomName(name);
-        loadDialog.setRomName(name);
+        statesDial.setRomName(name);
 
-        quickLoad.setDisable(!loadDialog.quickSaveFilesExist());
-        if (autoLoadWhenLaunchingRom && loadDialog.autoSaveFilesExist()) {
+        quickLoad.setDisable(!statesDial.quickSaveFilesExist());
+        if (autoLoadWhenLaunchingRom && statesDial.autoSaveFilesExist()) {
             try {
-                State auto = loadDialog.autoLoad();
+                State auto = statesDial.autoLoad();
                 gb.loadState(auto.getGbState(), auto.getScreenshot());
                 actualizeAnimationTimer();
             } catch (IOException e) {
@@ -236,11 +231,11 @@ public final class Main extends Application {
             MenuItem load = new MenuItem("Load");
             load.setAccelerator(new KeyCodeCombination(KeyCode.F7));
             load.setOnAction(e -> {
-                Optional<String> result = loadDialog.showAndWait();
+                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.LOAD);
                 if (result.isPresent()) {
                     String loadName = result.get();
                     try {
-                        State st = loadDialog.load(loadName);
+                        State st = statesDial.load(loadName);
                         gb.loadState(st.getGbState(), st.getScreenshot());
                         actualizeAnimationTimer();
                     } catch (IOException ex) {
@@ -251,14 +246,13 @@ public final class Main extends Application {
             MenuItem save = new MenuItem("Save");
             save.setAccelerator(new KeyCodeCombination(KeyCode.F8));
             save.setOnAction(e -> {
-                Optional<String> result = saveDialog.showAndWait();
+                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.SAVE);
                 if (result.isPresent()) {
                     String saveName = result.get();
                     try {
-                        saveDialog.save(saveName, gb);
-                        saveDialog.refreshStateNodes();
-                        loadDialog.refreshStateNodes();
-                        quickLoad.setDisable(!loadDialog.quickSaveFilesExist());
+                        statesDial.save(saveName, gb);
+                        statesDial.refreshStateNodes();
+                        quickLoad.setDisable(!statesDial.quickSaveFilesExist());
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
@@ -269,7 +263,7 @@ public final class Main extends Application {
             quickLoad.setAccelerator(new KeyCodeCombination(KeyCode.F5));
             quickLoad.setOnAction(e -> {
                 try {
-                    State state = loadDialog.quickLoad();
+                    State state = statesDial.quickLoad();
                     gb.loadState(state.getGbState(), state.getScreenshot());
                     actualizeAnimationTimer();
                 } catch (IOException ex) {
@@ -280,9 +274,8 @@ public final class Main extends Application {
             quickSave.setAccelerator(new KeyCodeCombination(KeyCode.F6));
             quickSave.setOnAction(e -> {
                 try {
-                    saveDialog.quickSave(gb);
-                    saveDialog.refreshStateNodes();
-                    loadDialog.refreshStateNodes();
+                    statesDial.quickSave(gb);
+                    statesDial.refreshStateNodes();
                     quickLoad.setDisable(false);
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -352,6 +345,7 @@ public final class Main extends Application {
     }
     private void loadOptions() {
         setOptionsToDefault();
+
         File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
         try (BufferedReader reader = new BufferedReader(new FileReader(options))) {
             String line, lastTag = null;
@@ -389,6 +383,8 @@ public final class Main extends Application {
                         autoLoadWhenLaunchingRom = Boolean.parseBoolean(line.substring(AUTO_LOAD_TAG.length()).trim());
                 }
                 break;
+            case SOUND_TAG:
+                break;
             default:
                 throw new IllegalArgumentException();
         }
@@ -419,7 +415,9 @@ public final class Main extends Application {
                 b.append(buffer, 0, read);
             keysMap = JoypadMapDialog.deserializeKeyMap(b.toString());
         } catch (IOException e) {
-            throw new UncheckedIOException(e);
+            setKeyMapToDefault();
+            saveKeyMap();
+            e.printStackTrace();
         }
     }
     private void setKeyMapToDefault() {
