@@ -18,7 +18,7 @@ public final class LcdImage {
      * @author Toufi
      */
     static final class Builder {
-        private final List<LcdImageLine> lines;
+        private final ArrayList<LcdImageLine> lines;
         
         /**
          * Constructs a new LcdImage.Builder,
@@ -58,22 +58,25 @@ public final class LcdImage {
     /**
      * Constructs a new LcdImage from
      * the given list of lines
-     * @param lines (List<LcdImageLine>) the list of
+     * @param lines (ArrayList<LcdImageLine>) the list of
      * LcdImageLine used to construct the LcdImage
      */
-    private LcdImage(List<LcdImageLine> lines) {
-        this.lines = Collections.unmodifiableList(new LinkedList<>(lines));
+    private LcdImage(ArrayList<LcdImageLine> lines) {
+        this.lines = List.copyOf(lines);
     }
+
+    /**
+     * Returns an unmodifiable List of
+     * the LcdImageLine composing the LcdImage
+     * @return (List<LcdImageLine>) list of LcdImageLine
+     */
+    List<LcdImageLine> getLines() { return lines; }
     
     /**
      * Returns the width of the LcdImage
      * @return (int) image width
      */
-    public int width() {
-        if (lines.isEmpty())
-            return 0;
-        return lines.get(0).size();
-    }
+    public int width() { return lines.isEmpty() ? 0 : lines.get(0).size(); }
     
     /**
      * Returns the height of the LcdImage
@@ -96,6 +99,7 @@ public final class LcdImage {
         return (l.lsb().testBit(x) ? 0b01 : 0b00) 
                 | (l.msb().testBit(x) ? 0b10 : 0b00);
     }
+
     
     @Override
     public boolean equals(Object obj) {

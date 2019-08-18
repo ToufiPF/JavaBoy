@@ -3,6 +3,7 @@ package ch.epfl.javaboy.gui;
 import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
+import ch.epfl.javaboy.component.lcd.ImageConverter;
 import ch.epfl.javaboy.component.lcd.LcdController;
 import ch.epfl.javaboy.gui.savestates.LoadDialog;
 import ch.epfl.javaboy.gui.savestates.SaveDialog;
@@ -64,6 +65,8 @@ public final class Main extends Application {
     private BorderPane root;
     private Scene scene;
     private Stage primaryStage;
+
+    private MenuItem quickLoad;
 
     private final SaveDialog saveDialog;
     private final LoadDialog loadDialog;
@@ -148,9 +151,12 @@ public final class Main extends Application {
         timer = createAnimationTimer(gb, System.nanoTime());
         timer.start();
         saveDialog.setRomName(name);
-        if (autoLoadWhenLaunchingRom && saveDialog.autoSaveFilesExist()) {
+        loadDialog.setRomName(name);
+
+        quickLoad.setDisable(!loadDialog.quickSaveFilesExist());
+        if (autoLoadWhenLaunchingRom && loadDialog.autoSaveFilesExist()) {
             try {
-                State auto = saveDialog.autoLoad();
+                State auto = loadDialog.autoLoad();
                 gb.loadState(auto.getGbState(), auto.getScreenshot());
                 actualizeAnimationTimer();
             } catch (IOException e) {
@@ -158,6 +164,7 @@ public final class Main extends Application {
             }
         }
     }
+
     private AnimationTimer createAnimationTimer(GameBoy gameBoy, long startTime) {
         return new AnimationTimer() {
             @Override
@@ -169,6 +176,12 @@ public final class Main extends Application {
                         gameBoy.lcdController().currentImage()));
             }
         };
+    }
+    private void actualizeAnimationTimer() {
+        long elapsedNanoSec = (long) (gb.cycles() / GameBoy.CYCLES_PER_NANO_SECOND);
+        timer.stop();
+        timer = createAnimationTimer(gb, System.nanoTime() - elapsedNanoSec);
+        timer.start();
     }
 
     private void createSceneRootView() {
@@ -243,18 +256,20 @@ public final class Main extends Application {
                     String saveName = result.get();
                     try {
                         saveDialog.save(saveName, gb);
+                        saveDialog.refreshStateNodes();
+                        loadDialog.refreshStateNodes();
+                        quickLoad.setDisable(!loadDialog.quickSaveFilesExist());
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
                 }
             });
 
-            MenuItem quickLoad = new MenuItem("QuickLoad");
+            quickLoad = new MenuItem("QuickLoad");
             quickLoad.setAccelerator(new KeyCodeCombination(KeyCode.F5));
-            quickLoad.setDisable(!saveDialog.quickSaveFilesExist());
             quickLoad.setOnAction(e -> {
                 try {
-                    State state = saveDialog.quickLoad();
+                    State state = loadDialog.quickLoad();
                     gb.loadState(state.getGbState(), state.getScreenshot());
                     actualizeAnimationTimer();
                 } catch (IOException ex) {
@@ -266,6 +281,8 @@ public final class Main extends Application {
             quickSave.setOnAction(e -> {
                 try {
                     saveDialog.quickSave(gb);
+                    saveDialog.refreshStateNodes();
+                    loadDialog.refreshStateNodes();
                     quickLoad.setDisable(false);
                 } catch (IOException ex) {
                     ex.printStackTrace();
@@ -411,12 +428,5 @@ public final class Main extends Application {
             return;
         String[] roms = romsFolder.list((dir, name) -> name.toLowerCase().endsWith(".gb"));
         romsList.addAll(roms);
-    }
-
-    private void actualizeAnimationTimer() {
-        long elapsedNanoSec = (long) (gb.cycles() / GameBoy.CYCLES_PER_NANO_SECOND);
-        timer.stop();
-        timer = createAnimationTimer(gb, System.nanoTime() - elapsedNanoSec);
-        timer.start();
     }
 }

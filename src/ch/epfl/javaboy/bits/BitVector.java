@@ -111,6 +111,22 @@ public final class BitVector {
     }
 
     /**
+     * Decomposes the BitVector and returns
+     * a copy of its bits in a byte array
+     * @return (byte[]) copy of the bits of the BitVector
+     */
+    public byte[] getBytes() {
+        byte[] res = new byte[size() / Byte.SIZE];
+        for (int i = 0 ; i < bits.length ; ++i) {
+            res[i * Integer.BYTES] = (byte) Bits.extract(bits[i], 0, Byte.SIZE);
+            res[i * Integer.BYTES + 1] = (byte) Bits.extract(bits[i], Byte.SIZE, Byte.SIZE);
+            res[i * Integer.BYTES + 2] = (byte) Bits.extract(bits[i], 2 * Byte.SIZE, Byte.SIZE);
+            res[i * Integer.BYTES + 3] = (byte) Bits.extract(bits[i], 3 * Byte.SIZE, Byte.SIZE);
+        }
+        return res;
+    }
+
+    /**
      * Returns the size of the BitVector
      * @return (int) number of bits
      */

@@ -1,17 +1,28 @@
 package ch.epfl.javaboy.gui.savestates;
 
-public final class LoadDialog extends StatesDialog<String> {
+/**
+ * LoadDialog
+ * A Dialog made to display available saves slots,
+ * and select the one to use (for loading).
+ * Returns an Optionnal<String> containing
+ * the name of the save chosen by the user
+ * after a call to showAndWait()
+ */
+public final class LoadDialog extends StatesDialog {
 
+    /**
+     * Creates a new LoadDialog
+     */
     public LoadDialog() {
         super();
         setTitle("Load States");
     }
 
     @Override
-    protected void refreshStateNodes() {
+    public void refreshStateNodes() {
         super.refreshStateNodes();
 
-        layout.getChildren().clear();
+        content.getChildren().clear();
         for (StateNode n : specialNodes) {
             if (n.getTitle().equals("AutoSave")) {
                 n.setOnMouseClicked(e -> {
@@ -24,7 +35,7 @@ public final class LoadDialog extends StatesDialog<String> {
                     close();
                 });
             }
-            layout.getChildren().add(n);
+            content.getChildren().add(n);
         }
         for (int i = 0 ; i < regularNodes.size() ; ++i) {
             int finalI = i;
@@ -32,7 +43,7 @@ public final class LoadDialog extends StatesDialog<String> {
                 setResult(REGULAR_STATE + finalI);
                 close();
             });
-            layout.getChildren().add(regularNodes.get(i));
+            content.getChildren().add(regularNodes.get(i));
         }
     }
 }

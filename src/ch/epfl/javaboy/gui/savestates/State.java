@@ -1,10 +1,13 @@
 package ch.epfl.javaboy.gui.savestates;
 
 import ch.epfl.javaboy.bits.Bits;
-import ch.epfl.javaboy.component.lcd.LcdController;
+import ch.epfl.javaboy.component.lcd.ImageConverter;
 import ch.epfl.javaboy.component.lcd.LcdImage;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
@@ -26,7 +29,8 @@ public final class State {
             final LcdImage img = state.metadata.screenshot;
             os.write(Bits.decomposeInteger(img.height()));
             os.write(Bits.decomposeInteger(img.width()));
-            //TODO: os.write(img);
+
+            os.write(ImageConverter.toByteArray(img));
         }
         {
             File stateFile = new File(pathAndStateName + ".dat");
@@ -43,21 +47,21 @@ public final class State {
     @SuppressWarnings("ResultOfMethodCallIgnored")
     static Metadata loadMetadata(String pathAndStateName) throws IOException {
         File metadataFile = new File(pathAndStateName + ".meta");
-        try (FileInputStream is  = new FileInputStream(metadataFile)) {
-            byte[] buff = new byte[4];
-            is.read(buff);
-            final int year = Bits.recomposeInteger(buff);
-            final LocalDateTime ldt = LocalDateTime.of(year, is.read(), is.read(), is.read(), is.read(), is.read());
+        FileInputStream is  = new FileInputStream(metadataFile);
 
-            is.read(buff);
-            final int height = Bits.recomposeInteger(buff);
-            is.read(buff);
-            final int width = Bits.recomposeInteger(buff);
-            //TODO: is.read(LcdImage);
-            return new Metadata(ldt, LcdController.BLANK_IMAGE);
-        } catch (IOException e) {
-            throw e;
-        }
+        byte[] buff = new byte[4];
+        is.read(buff);
+        final int year = Bits.recomposeInteger(buff);
+        final LocalDateTime ldt = LocalDateTime.of(year, is.read(), is.read(), is.read(), is.read(), is.read());
+
+        is.read(buff);
+        final int height = Bits.recomposeInteger(buff);
+        is.read(buff);
+        final int width = Bits.recomposeInteger(buff);
+
+        buff = new byte[height * (2 * width / Byte.SIZE)];
+        is.read(buff);
+        return new Metadata(ldt, ImageConverter.fromByteArray(buff, width, height));
     }
     static byte[] loadData(String pathAndStateName) throws IOException {
         File stateFile = new File(pathAndStateName + ".dat");
