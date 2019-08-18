@@ -1,34 +1,64 @@
 package ch.epfl.javaboy.gui.savestates;
 
 import ch.epfl.javaboy.GameBoy;
-import ch.epfl.javaboy.component.lcd.LcdController;
-import ch.epfl.javaboy.component.lcd.LcdImage;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.layout.VBox;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-public final class StatesDialog extends Dialog<String> {
+abstract class StatesDialog<T> extends Dialog<T> {
+    public static final String ABSOLUTE_SAVE_PATH = new File("").getAbsolutePath() + "/Saves/";
+    protected static final String AUTO_STATE = "auto";
+    protected static final String QUICK_STATE = "quick";
+    protected static final String REGULAR_STATE = "save";
 
-    private static final String AUTO_STATE = "auto";
-    private static final String QUICK_STATE = "quick";
-    private static final String REGULAR_STATE = "save";
+    public static final int REGULAR_SAVE_SLOTS = 10;
+    public static final int SPECIAL_SAVE_SLOTS = 2;
+    public static final int TOTAL_SAVE_SLOTS = REGULAR_SAVE_SLOTS + SPECIAL_SAVE_SLOTS;
 
-    private final String statesPath;
-    private final String autoStatePath, quickStatePath, regularStatePath;
+    static String statesPathForRom(String romName) {
+        return ABSOLUTE_SAVE_PATH + romName.replace('.', '-') + '/';
+    }
+
+    private String statesPath;
+
+    protected final VBox layout;
+    protected final List<StateNode> specialNodes, regularNodes;
 
     /**
-     * Creates a new SaveLoadDialog for the given rom
-     * @param romName (String) name of the rom
+     * Creates a new StateDialog
      */
-    public StatesDialog(String romName) {
+    StatesDialog() {
         // Dialog()
         super();
-        statesPath = State.getStatesPath(romName);
+        specialNodes = new ArrayList<>(SPECIAL_SAVE_SLOTS);
+        regularNodes = new ArrayList<>(REGULAR_SAVE_SLOTS);
+
+        // Button Types
+        getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
+        setResultConverter(buttonType -> null);
+        getDialogPane().setMaxSize(300, 500);
+
+        // ScrollPane
+        layout = new VBox();
+        layout.setSpacing(10);
+        ScrollPane scrollPane = new ScrollPane();
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
+        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        scrollPane.setContent(layout);
+        getDialogPane().setContent(scrollPane);
+    }
+
+    public void setRomName(String romName) {
+        statesPath = statesPathForRom(romName);
         File statesFile = new File(statesPath);
         if (!statesFile.exists()) {
             try {
@@ -37,66 +67,74 @@ public final class StatesDialog extends Dialog<String> {
                 throw new UncheckedIOException(e);
             }
         }
-        autoStatePath = statesPath + AUTO_STATE;
-        quickStatePath = statesPath + QUICK_STATE;
-        regularStatePath = statesPath + REGULAR_STATE;
-        setTitle("Save and Load States");
+        refreshStateNodes();
+    }
+    protected void refreshStateNodes() {
+        // Auto & QuickSaves
+        try {
+            specialNodes.clear();
+            if (autoSaveFilesExist())
+                specialNodes.add(new StateNode("AutoSave", State.loadMetadata(statesPath + AUTO_STATE)));
+            if (quickSaveFilesExist())
+                specialNodes.add(new StateNode("QuickSave", State.loadMetadata(statesPath + QUICK_STATE)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // Regular Saves
+        try {
+            regularNodes.clear();
+            for (int i = 0; i < REGULAR_SAVE_SLOTS; ++i)
+                if (regularSaveFilesExist(i))
+                    regularNodes.add(new StateNode("Save " + i, State.loadMetadata(statesPath + REGULAR_STATE + i)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 
-        // Button Types
-        getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
-
-        // Grid
-
+    public void save(String saveName, GameBoy gb) throws IOException {
+        save(saveName, new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
+    }
+    public void save(String saveName, State state) throws IOException {
+        State.saveState(statesPath + saveName, state);
+        System.out.println("Saved : " + saveName + ", " + state.getDateAndTime());
+        refreshStateNodes();
+    }
+    public State load(String saveName) throws IOException {
+        State state = State.loadState(statesPath + saveName);
+        System.out.println("Loaded : " + saveName + ", " + state.getDateAndTime());
+        return state;
     }
 
     public boolean autoSaveFilesExist() {
-        return new File(autoStatePath + ".dat").exists()
-                && new File(autoStatePath + ".meta").exists();
+        return new File(statesPath + AUTO_STATE + ".dat").exists()
+                && new File(statesPath + AUTO_STATE + ".meta").exists();
     }
     public void autoSave(GameBoy gb) throws IOException {
         autoSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
     public void autoSave(State state) throws IOException {
-        State.saveState(autoStatePath, state);
-        System.out.println("AutoSaved : " + state.getDateAndTime());
+        save(AUTO_STATE, state);
     }
     public State autoLoad() throws IOException {
-        State state = State.loadState(autoStatePath);
-        System.out.println("AutoLoaded : " + state.getDateAndTime());
-        return state;
+        return load(AUTO_STATE);
     }
 
     public boolean quickSaveFilesExist() {
-        return new File(quickStatePath + ".dat").exists()
-                && new File(quickStatePath + ".meta").exists();
+        return new File(statesPath + QUICK_STATE + ".dat").exists()
+                && new File(statesPath + QUICK_STATE + ".meta").exists();
     }
     public void quickSave(GameBoy gb) throws IOException {
         quickSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
     public void quickSave(State state) throws IOException {
-        State.saveState(quickStatePath, state);
-        System.out.println("QuickSaved : " + state.getDateAndTime());
+        save(QUICK_STATE, state);
     }
     public State quickLoad() throws IOException {
-        State state = State.loadState(quickStatePath);
-        System.out.println("QuickLoaded : " + state.getDateAndTime());
-        return state;
+        return load(QUICK_STATE);
     }
 
     public boolean regularSaveFilesExist(int slot) {
-        return new File(regularStatePath + slot + ".dat").exists()
-                && new File(regularStatePath + slot + ".meta").exists();
-    }
-    public void regularSave(GameBoy gb, int slot) throws IOException {
-        regularSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()), slot);
-    }
-    public void regularSave(State state, int slot) throws IOException {
-        State.saveState(regularStatePath + slot, state);
-        System.out.println("Saved in slot " + slot + " : " + state.getDateAndTime());
-    }
-    public State regularLoad(int slot) throws IOException {
-        State state = State.loadState(regularStatePath + slot);
-        System.out.println("Loaded in slot " + slot + " : " + state.getDateAndTime());
-        return state;
+        return new File(statesPath + REGULAR_STATE + slot + ".dat").exists()
+                && new File(statesPath + REGULAR_STATE + slot + ".meta").exists();
     }
 }

@@ -9,16 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 public final class State {
-    public static final String ABSOLUTE_SAVE_PATH = new File("").getAbsolutePath() + "/Saves/";
-
-    private static final String AUTO_SAVE_NAME = "auto";
-    private static final String QUICK_SAVE_NAME = "quick";
-
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
-
-    public static String getStatesPath(String romName) {
-        return State.ABSOLUTE_SAVE_PATH + romName.replace('.', '-') + '/';
-    }
 
     static void saveState(String pathAndStateName, State state) throws IOException {
         {

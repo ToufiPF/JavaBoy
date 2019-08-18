@@ -4,12 +4,10 @@ import ch.epfl.javaboy.GameBoy;
 import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.LcdController;
+import ch.epfl.javaboy.gui.savestates.SaveDialog;
 import ch.epfl.javaboy.gui.savestates.State;
-import ch.epfl.javaboy.gui.savestates.StatesDialog;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
-import javafx.beans.value.ChangeListener;
-import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
@@ -17,6 +15,7 @@ import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -26,6 +25,7 @@ import java.io.*;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static ch.epfl.javaboy.gui.Options.*;
 
@@ -52,7 +52,7 @@ public final class Main extends Application {
     private Scene scene;
     private Stage primaryStage;
 
-    private StatesDialog statesDial;
+    private SaveDialog saveDialog;
 
     private String romsPath;
     private final ObservableList<String> romsList;
@@ -66,7 +66,7 @@ public final class Main extends Application {
 
     public Main() {
         primaryStage = null;
-        statesDial = null;
+        saveDialog = null;
 
         romsPath = null;
         romsList = FXCollections.observableList(new LinkedList<>());
@@ -79,6 +79,8 @@ public final class Main extends Application {
         timer = null;
 
         loadAllOptions();
+        saveDialog = new SaveDialog();
+        saveDialog.setRomName(lastPlayedRom);
 
         createSceneRootView();
         createMenuBar();
@@ -103,7 +105,7 @@ public final class Main extends Application {
         primaryStage.setOnCloseRequest(e -> {
             if (gb != null) {
                 try {
-                    statesDial.autoSave(gb);
+                    saveDialog.autoSave(gb);
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
@@ -130,12 +132,12 @@ public final class Main extends Application {
         }
         timer = createAnimationTimer(gb, System.nanoTime());
         timer.start();
-        statesDial = new StatesDialog(name);
-        if (autoLoadWhenLaunchingRom) {
+        saveDialog.setRomName(name);
+        if (autoLoadWhenLaunchingRom && saveDialog.autoSaveFilesExist()) {
             try {
-                State auto = statesDial.autoLoad();
+                State auto = saveDialog.autoLoad();
                 gb.loadState(auto.getGbState(), auto.getScreenshot());
-                onLoadingState();
+                actualizeAnimationTimer();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -203,33 +205,47 @@ public final class Main extends Application {
                 saveAllOptions();
             });
 
-            MenuItem save = new MenuItem("Save");
-            save.setOnAction(e -> {
-
-            });
             MenuItem load = new MenuItem("Load");
-            save.setOnAction(e -> {
-
+            load.setAccelerator(new KeyCodeCombination(KeyCode.F7));
+            load.setOnAction(e -> {
             });
-
-            MenuItem quickSave = new MenuItem("QuickSave");
-            quickSave.setOnAction(e -> {
-                try {
-                    statesDial.quickSave(gb);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
+            MenuItem save = new MenuItem("Save");
+            save.setAccelerator(new KeyCodeCombination(KeyCode.F8));
+            save.setOnAction(e -> {
+                Optional<String> result = saveDialog.showAndWait();
+                if (result.isPresent()) {
+                    String saveName = result.get();
+                    try {
+                        saveDialog.save(saveName, gb);
+                    } catch (IOException ex) {
+                        ex.printStackTrace();
+                    }
                 }
             });
+
             MenuItem quickLoad = new MenuItem("QuickLoad");
+            quickLoad.setAccelerator(new KeyCodeCombination(KeyCode.F5));
+            quickLoad.setDisable(!saveDialog.quickSaveFilesExist());
             quickLoad.setOnAction(e -> {
                 try {
-                    State state = statesDial.quickLoad();
+                    State state = saveDialog.quickLoad();
                     gb.loadState(state.getGbState(), state.getScreenshot());
-                    onLoadingState();
+                    actualizeAnimationTimer();
                 } catch (IOException ex) {
                     ex.printStackTrace();
                 }
             });
+            MenuItem quickSave = new MenuItem("QuickSave");
+            quickSave.setAccelerator(new KeyCodeCombination(KeyCode.F6));
+            quickSave.setOnAction(e -> {
+                try {
+                    saveDialog.quickSave(gb);
+                    quickLoad.setDisable(false);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+
             MenuItem quit = new MenuItem("Quit");
             quit.setOnAction(e -> primaryStage.fireEvent(
                     new WindowEvent(primaryStage, WindowEvent.WINDOW_CLOSE_REQUEST)));
@@ -371,7 +387,7 @@ public final class Main extends Application {
         romsList.addAll(roms);
     }
 
-    private void onLoadingState() {
+    private void actualizeAnimationTimer() {
         long elapsedNanoSec = (long) (gb.cycles() / GameBoy.CYCLES_PER_NANO_SECOND);
         timer.stop();
         timer = createAnimationTimer(gb, System.nanoTime() - elapsedNanoSec);

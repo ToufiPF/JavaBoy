@@ -24,7 +24,6 @@ public final class ImageConverter {
      * @return (Image) JavaFX Image
      */
     public static Image convert(LcdImage lcdImg) {
-        
         WritableImage img = new WritableImage(lcdImg.width(), lcdImg.height());
         PixelWriter writer = img.getPixelWriter();
         
