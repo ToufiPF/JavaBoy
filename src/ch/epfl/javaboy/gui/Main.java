@@ -29,7 +29,6 @@ import javafx.stage.WindowEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -94,7 +93,8 @@ public final class Main extends Application {
         gb = null;
         timer = null;
 
-        loadAllOptions();
+        loadOptions();
+        loadKeyMap();
         saveDialog = new SaveDialog();
         saveDialog.setRomName(lastPlayedRom);
         loadDialog = new LoadDialog();
@@ -215,7 +215,7 @@ public final class Main extends Application {
                     rom.setOnAction(e -> {
                         lastPlayedRom = rom.getText();
                         launchRom(rom.getText());
-                        saveAllOptions();
+                        saveOptions();
                     });
                     romLoad.getItems().add(rom);
                 }
@@ -230,7 +230,7 @@ public final class Main extends Application {
                 if (!(romsPath.endsWith("/") || romsPath.endsWith("\\")))
                     romsPath += '/';
                 reloadRomsInActivePath();
-                saveAllOptions();
+                saveOptions();
             });
 
             MenuItem load = new MenuItem("Load");
@@ -307,13 +307,13 @@ public final class Main extends Application {
                 JoypadMapDialog dial = new JoypadMapDialog(keysMap);
                 dial.showAndWait();
                 keysMap = dial.getResult();
-                saveAllOptions();
+                saveKeyMap();
             });
             CheckMenuItem autoLoad = new CheckMenuItem("Auto Load when starting Rom");
             autoLoad.setSelected(autoLoadWhenLaunchingRom);
             autoLoad.selectedProperty().addListener((obs, oldV, newV) -> {
                 autoLoadWhenLaunchingRom = newV;
-                saveAllOptions();
+                saveOptions();
             });
 
             optionsMenu.getItems().addAll(controls, autoLoad);
@@ -337,7 +337,7 @@ public final class Main extends Application {
         root.setTop(menuBar);
     }
 
-    private void saveAllOptions() {
+    private void saveOptions() {
         File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
         try (Writer writer = new FileWriter(options)) {
             // General
@@ -346,16 +346,12 @@ public final class Main extends Application {
             writer.write(LAST_PLAYED_ROM_TAG + lastPlayedRom + '\n');
             writer.write(AUTO_LOAD_TAG + autoLoadWhenLaunchingRom + '\n');
 
-            // Key Map
-            writer.write(KEY_MAP_TAG + '\n');
-            String str = JoypadMapDialog.serializeKeyMap(keysMap);
-            writer.write(str);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
-    private void loadAllOptions() {
-        allOptionsToDefault();
+    private void loadOptions() {
+        setOptionsToDefault();
         File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
         try (BufferedReader reader = new BufferedReader(new FileReader(options))) {
             String line, lastTag = null;
@@ -366,11 +362,6 @@ public final class Main extends Application {
                         loadOption(lastTag, content);
                     lastTag = GENERAL_TAG;
                     content.clear();
-                } else if (line.trim().equals(KEY_MAP_TAG)) {
-                    if (lastTag != null)
-                        loadOption(lastTag, content);
-                    lastTag = KEY_MAP_TAG;
-                    content.clear();
                 } else if (!line.startsWith("#")) {
                     content.add(line);
                 }
@@ -378,15 +369,13 @@ public final class Main extends Application {
             if (lastTag != null)
                 loadOption(lastTag, content);
 
-        } catch (FileNotFoundException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         } catch (IllegalArgumentException e) {
             e.printStackTrace();
-            allOptionsToDefault();
-        }catch (IOException e) {
-            throw new UncheckedIOException(e);
+            setOptionsToDefault();
         }
-        saveAllOptions();
+        saveOptions();
     }
     private void loadOption(String optionTag, List<String> content) {
         switch (optionTag) {
@@ -400,22 +389,40 @@ public final class Main extends Application {
                         autoLoadWhenLaunchingRom = Boolean.parseBoolean(line.substring(AUTO_LOAD_TAG.length()).trim());
                 }
                 break;
-            case KEY_MAP_TAG:
-                StringBuilder b = new StringBuilder();
-                for (String s : content)
-                    b.append(s).append('\n');
-                keysMap = JoypadMapDialog.deserializeKeyMap(b.toString());
-                break;
             default:
                 throw new IllegalArgumentException();
         }
     }
-    private void allOptionsToDefault() {
+    private void setOptionsToDefault() {
         // General
         romsPath = DEFAULT_ROMS_PATH;
         lastPlayedRom = "";
         autoLoadWhenLaunchingRom = false;
-        // Key Map
+    }
+
+    private void saveKeyMap() {
+        File file = new File(KEYMAP_FILE_PATH + KEYMAP_FILE_NAME);
+        try (Writer writer = new FileWriter(file)) {
+            String str = JoypadMapDialog.serializeKeyMap(keysMap);
+            writer.write(str);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+    private void loadKeyMap() {
+        File file = new File(KEYMAP_FILE_PATH + KEYMAP_FILE_NAME);
+        try (FileReader reader = new FileReader(file)) {
+            StringBuilder b = new StringBuilder();
+            char[] buffer = new char[50];
+            int read;
+            while ((read = reader.read(buffer)) != -1)
+                b.append(buffer, 0, read);
+            keysMap = JoypadMapDialog.deserializeKeyMap(b.toString());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+    }
+    private void setKeyMapToDefault() {
         keysMap = JoypadMapDialog.defaultKeyMap();
     }
 

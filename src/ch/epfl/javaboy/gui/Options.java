@@ -10,7 +10,8 @@ public final class Options {
     public final static String LAST_PLAYED_ROM_TAG = "Last_Rom:";
     public final static String AUTO_LOAD_TAG = "Auto_Load_When_Launching_Rom:";
 
-    public final static String KEY_MAP_TAG = "<KEYMAP>";
+    public final static String KEYMAP_FILE_PATH = "";
+    public final static String KEYMAP_FILE_NAME = "keymap.ini";
 
 
     private Options() {

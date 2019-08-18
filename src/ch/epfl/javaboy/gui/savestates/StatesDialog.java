@@ -3,7 +3,6 @@ package ch.epfl.javaboy.gui.savestates;
 import ch.epfl.javaboy.GameBoy;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
-import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
