@@ -1,8 +1,6 @@
 package ch.epfl.javaboy.gui.savestates;
 
 import ch.epfl.javaboy.GameBoy;
-import javafx.geometry.Insets;
-import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Node;
@@ -10,7 +8,6 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.layout.FlowPane;
 import javafx.scene.layout.HBox;
 import javafx.stage.Screen;
 
@@ -31,7 +28,7 @@ import java.util.Optional;
 public final class StatesDialog {
 
     public enum Mode {
-        SAVE, LOAD
+        SAVING, LOADING
     }
 
     private static final String ABSOLUTE_SAVE_PATH = new File("").getAbsolutePath() + "/Saves/";
@@ -42,36 +39,42 @@ public final class StatesDialog {
     private static final int REGULAR_SAVE_SLOTS = 10;
     private static final int SPECIAL_SAVE_SLOTS = 2;
 
-    private final static int DIALOG_WIDTH = 2 * StateNode.WIDTH + 70;
-    private final static int DIALOG_HEIGHT = 3 * StateNode.HEIGTH;
+    public final static int DIALOG_WIDTH = 2 * StateNode.WIDTH + 70;
+    public final static int DIALOG_HEIGHT = 3 * StateNode.HEIGTH;
 
     private static String statesPathForRom(String romName) {
         return ABSOLUTE_SAVE_PATH + romName.replace('.', '-') + '/';
     }
 
     private final Dialog<String> dialog;
-    private final FlowPane content;
+    private final StateNodePane content;
 
     private final List<StateNode> specialNodes, regularNodes;
     private final Node newSaveNode;
 
     private String statesPath;
-    private Mode dialogMode;
 
     /**
      * Creates a new StateDialog
      */
     public StatesDialog() {
-        // Dialog()
-        dialog = new Dialog<>();
-        dialog.setResizable(false);
-        dialog.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
-        dialog.setResultConverter(buttonType -> null);
 
         specialNodes = new ArrayList<>(SPECIAL_SAVE_SLOTS);
         regularNodes = new ArrayList<>(REGULAR_SAVE_SLOTS);
-        dialogMode = Mode.SAVE;
         newSaveNode = createNewSaveNode();
+        content = new StateNodePane();
+
+        // Dialog()
+        dialog = new Dialog<>();
+        dialog.setResizable(false);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.setResultConverter(buttonType -> {
+            if (buttonType.equals(ButtonType.OK) && content.getSelection() != null)
+                return content.getSelection().getSaveName();
+            return null;
+        });
+        dialog.getDialogPane().setStyle("-fx-focus-color: transparent;\n" +
+                        "-fx-faint-focus-color: transparent;");
 
         // Position and Size
         Rectangle2D bounds = Screen.getPrimary().getVisualBounds();
@@ -81,14 +84,6 @@ public final class StatesDialog {
         dialog.getDialogPane().setMaxSize(DIALOG_WIDTH, DIALOG_HEIGHT);
         dialog.getDialogPane().setMinSize(DIALOG_WIDTH, DIALOG_HEIGHT);
 
-        // ScrollPane
-        content = new FlowPane();
-        content.setPadding(new Insets(5));
-        content.setHgap(30);
-        content.setVgap(25);
-        content.setPrefWrapLength(DIALOG_WIDTH);
-        content.setOrientation(Orientation.HORIZONTAL);
-
         ScrollPane pane = new ScrollPane();
         pane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
         pane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
@@ -96,9 +91,15 @@ public final class StatesDialog {
         dialog.getDialogPane().setContent(pane);
     }
 
+    /**
+     * Shows the Dialog and returns the result
+     * in an Optional<String>
+     * @param mode (Mode) the mode of the dialog (saving or loading)
+     * @return (Optional<String>) containing a String if the user
+     * selected a slot, a empty Optionnal otherwise
+     */
     public Optional<String> showAndWait(Mode mode) {
-        dialogMode = mode;
-        refreshContent();
+        refreshContent(mode);
         return dialog.showAndWait();
     }
 
@@ -120,29 +121,6 @@ public final class StatesDialog {
             }
         }
         refreshStateNodes();
-    }
-
-    public void refreshStateNodes() {
-        // Auto & QuickSaves
-        try {
-            specialNodes.clear();
-            if (autoSaveFilesExist())
-                specialNodes.add(new StateNode("AutoSave", State.loadMetadata(statesPath + AUTO_STATE)));
-            if (quickSaveFilesExist())
-                specialNodes.add(new StateNode("QuickSave", State.loadMetadata(statesPath + QUICK_STATE)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        // Regular Saves
-        try {
-            regularNodes.clear();
-            for (int i = 0; i < REGULAR_SAVE_SLOTS; ++i)
-                if (regularSaveFilesExist(i))
-                    regularNodes.add(new StateNode("Save " + i, State.loadMetadata(statesPath + REGULAR_STATE + i)));
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        refreshContent();
     }
 
     /**
@@ -168,6 +146,7 @@ public final class StatesDialog {
      */
     public void save(String saveName, State state) throws IOException {
         State.saveState(statesPath + saveName, state);
+        refreshStateNodes();
         System.out.println("Saved : " + saveName + ", " + state.getDateAndTime());
     }
 
@@ -206,6 +185,7 @@ public final class StatesDialog {
     public void autoSave(GameBoy gb) throws IOException {
         autoSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
+
     /**
      * Autosaves the given State
      *
@@ -215,6 +195,7 @@ public final class StatesDialog {
     public void autoSave(State state) throws IOException {
         save(AUTO_STATE, state);
     }
+
     /**
      * Loads the autosave State
      *
@@ -234,6 +215,7 @@ public final class StatesDialog {
         return new File(statesPath + QUICK_STATE + ".dat").exists()
                 && new File(statesPath + QUICK_STATE + ".meta").exists();
     }
+
     /**
      * Generates the State of the GameBoy,
      * ie. the date, screenshot and save state,
@@ -246,6 +228,7 @@ public final class StatesDialog {
     public void quickSave(GameBoy gb) throws IOException {
         quickSave(new State(LocalDateTime.now(), gb.lcdController().currentImage(), gb.saveState()));
     }
+
     /**
      * Quicksaves the given State
      *
@@ -255,6 +238,7 @@ public final class StatesDialog {
     public void quickSave(State state) throws IOException {
         save(QUICK_STATE, state);
     }
+
     /**
      * Loads the quicksave State
      *
@@ -293,47 +277,44 @@ public final class StatesDialog {
         return lay;
     }
 
-    private void refreshContent() {
+    private void refreshStateNodes() {
+        // Auto & QuickSaves
+        try {
+            specialNodes.clear();
+            if (autoSaveFilesExist())
+                specialNodes.add(new StateNode("AutoSave", AUTO_STATE, State.loadMetadata(statesPath + AUTO_STATE)));
+            if (quickSaveFilesExist())
+                specialNodes.add(new StateNode("QuickSave", QUICK_STATE, State.loadMetadata(statesPath + QUICK_STATE)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        // Regular Saves
+        try {
+            regularNodes.clear();
+            for (int i = 0; i < REGULAR_SAVE_SLOTS; ++i)
+                if (regularSaveFilesExist(i))
+                    regularNodes.add(new StateNode("Save " + i, REGULAR_STATE + i, State.loadMetadata(statesPath + REGULAR_STATE + i)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+    private void refreshContent(Mode mode) {
         content.getChildren().clear();
-        if (dialogMode.equals(Mode.SAVE)) {
+        if (mode.equals(Mode.SAVING)) {
             dialog.setTitle("Save State");
 
-            for (int i = 0; i < regularNodes.size(); ++i) {
-                int finalI = i;
-                regularNodes.get(i).setOnMouseClicked(e -> {
-                    dialog.setResult(REGULAR_STATE + finalI);
-                    dialog.close();
-                });
-                content.getChildren().add(regularNodes.get(i));
-            }
+            for (StateNode regularNode : regularNodes)
+                content.getChildren().add(regularNode);
             if (regularNodes.size() < REGULAR_SAVE_SLOTS)
                 content.getChildren().add(newSaveNode);
 
         } else {
             dialog.setTitle("Load State");
 
-            for (StateNode n : specialNodes) {
-                if (n.getTitle().equals("AutoSave")) {
-                    n.setOnMouseClicked(e -> {
-                        dialog.setResult(AUTO_STATE);
-                        dialog.close();
-                    });
-                } else if (n.getTitle().equals("QuickSave")) {
-                    n.setOnMouseClicked(e -> {
-                        dialog.setResult(QUICK_STATE);
-                        dialog.close();
-                    });
-                }
+            for (StateNode n : specialNodes)
                 content.getChildren().add(n);
-            }
-            for (int i = 0; i < regularNodes.size(); ++i) {
-                int finalI = i;
-                regularNodes.get(i).setOnMouseClicked(e -> {
-                    dialog.setResult(REGULAR_STATE + finalI);
-                    dialog.close();
-                });
-                content.getChildren().add(regularNodes.get(i));
-            }
+            for (StateNode regularNode : regularNodes)
+                content.getChildren().add(regularNode);
         }
     }
 }

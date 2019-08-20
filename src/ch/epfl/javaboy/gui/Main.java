@@ -231,7 +231,7 @@ public final class Main extends Application {
             MenuItem load = new MenuItem("Load");
             load.setAccelerator(new KeyCodeCombination(KeyCode.F7));
             load.setOnAction(e -> {
-                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.LOAD);
+                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.LOADING);
                 if (result.isPresent()) {
                     String loadName = result.get();
                     try {
@@ -246,12 +246,11 @@ public final class Main extends Application {
             MenuItem save = new MenuItem("Save");
             save.setAccelerator(new KeyCodeCombination(KeyCode.F8));
             save.setOnAction(e -> {
-                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.SAVE);
+                Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.SAVING);
                 if (result.isPresent()) {
                     String saveName = result.get();
                     try {
                         statesDial.save(saveName, gb);
-                        statesDial.refreshStateNodes();
                         quickLoad.setDisable(!statesDial.quickSaveFilesExist());
                     } catch (IOException ex) {
                         ex.printStackTrace();
@@ -275,7 +274,6 @@ public final class Main extends Application {
             quickSave.setOnAction(e -> {
                 try {
                     statesDial.quickSave(gb);
-                    statesDial.refreshStateNodes();
                     quickLoad.setDisable(false);
                 } catch (IOException ex) {
                     ex.printStackTrace();
