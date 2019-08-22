@@ -2,8 +2,6 @@ package ch.epfl.javaboy.component;
 
 import ch.epfl.javaboy.Bus;
 
-import java.util.ArrayList;
-
 /** Component
  * Basic interface of a JavaBoy Component
  * @author Toufi
@@ -11,7 +9,7 @@ import java.util.ArrayList;
 public interface Component {
     
     /** Return value when read cannot return its value **/
-    static final int NO_DATA = 0x100;
+    int NO_DATA = 0x100;
     
     /**
      * Returns the value at the given address

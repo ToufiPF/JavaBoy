@@ -6,7 +6,6 @@ import ch.epfl.javaboy.component.Timer;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.lcd.LcdController;
-import ch.epfl.javaboy.component.lcd.LcdImage;
 import ch.epfl.javaboy.component.memory.BootRomController;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.RamController;
@@ -14,7 +13,9 @@ import ch.epfl.javaboy.component.sounds.AudioLineSoundOutput;
 import ch.epfl.javaboy.component.sounds.SoundController;
 
 import javax.sound.sampled.LineUnavailableException;
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Objects;
 
 /**
@@ -25,7 +26,7 @@ import java.util.Objects;
 public final class GameBoy {
     
     public static final long CYCLES_PER_SECOND = 1L << 20;
-    public static final double CYCLES_PER_NANO_SECOND = CYCLES_PER_SECOND / 1e9;
+    public static final double CYCLES_PER_NANO_SECOND = (double) CYCLES_PER_SECOND / 1e9;
     
     private final Bus bus;
     private final Cpu cpu;

@@ -1,12 +1,10 @@
 package ch.epfl.javaboy.component.cartridge;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-
 import ch.epfl.javaboy.Preconditions;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Rom;
+
+import java.util.Objects;
 
 /**
  * Represents a Cartridge with a 
@@ -16,11 +14,11 @@ import ch.epfl.javaboy.component.memory.Rom;
  */
 final class MBC0 implements Component {
     
-    public static final int MBC0_SIZE = 32_768;
+    private static final int MBC0_SIZE = 32_768;
     
     private final Rom rom;
     
-    public MBC0(Rom rom) {
+    MBC0(Rom rom) {
         Objects.requireNonNull(rom);
         if (rom.size() != MBC0_SIZE)
             throw new IllegalArgumentException("Invalid rom size.");

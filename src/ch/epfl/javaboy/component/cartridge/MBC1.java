@@ -1,17 +1,17 @@
 package ch.epfl.javaboy.component.cartridge;
 
-import static ch.epfl.javaboy.Preconditions.checkBits16;
-import static ch.epfl.javaboy.Preconditions.checkBits8;
-
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.memory.Ram;
 import ch.epfl.javaboy.component.memory.Rom;
 
+import static ch.epfl.javaboy.Preconditions.checkBits16;
+import static ch.epfl.javaboy.Preconditions.checkBits8;
+
 final class MBC1 implements Component {
     private static final int RAM_ENABLE = 0xA;
 
-    private enum Mode { MODE_0, MODE_1 };
+    private enum Mode { MODE_0, MODE_1 }
 
     private final Rom rom;
     private final Ram ram;
@@ -21,7 +21,7 @@ final class MBC1 implements Component {
     private int romLsb5, ramRom2;
     private final int romMask, ramMask;
 
-    public MBC1(Rom rom, int ramSize) {
+    MBC1(Rom rom, int ramSize) {
         this.rom = rom;
         this.ram = new Ram(ramSize);
 
@@ -80,8 +80,7 @@ final class MBC1 implements Component {
         state[0] = (byte) statusByte1;
         state[1] = (byte) statusByte2;
 
-        for (int i = 0 ; i < ram.size() ; ++i)
-            state[2 + i] = ram.getData()[i];
+        System.arraycopy(ram.getData(), 0, state, 2, ram.size());
         return state;
     }
 
@@ -92,8 +91,7 @@ final class MBC1 implements Component {
         ramEnabled = Bits.test(state[0], 1);
         mode = Bits.test(state[0], 0) ? Mode.MODE_1 : Mode.MODE_0;
 
-        for (int i = 0 ; i < ram.size() ; ++i)
-            ram.getData()[i] = state[2 + i];
+        System.arraycopy(state, 2, ram.getData(), 0, ram.size());
     }
 
     private int msb2() {

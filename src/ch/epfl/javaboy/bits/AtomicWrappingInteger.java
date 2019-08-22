@@ -20,6 +20,7 @@ public class AtomicWrappingInteger {
         counter.set(value);
     }
 
+    @SuppressWarnings("UnusedReturnValue")
     public int incrementAndGet() {
         return (int) (counter.incrementAndGet() % modulo);
     }

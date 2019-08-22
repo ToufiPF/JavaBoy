@@ -1,14 +1,15 @@
 package ch.epfl.javaboy.bits;
 
-import java.util.Arrays;
-
 import ch.epfl.javaboy.Preconditions;
+
+import java.util.Arrays;
 
 /**
  * Represents a vector of bits which size is 
  * a multiple of 32 (Integer.SIZE)
  * @author Toufi
  */
+@SuppressWarnings("WeakerAccess")
 public final class BitVector {
     
     /**

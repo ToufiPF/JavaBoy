@@ -228,7 +228,7 @@ public class SoundController implements Component, Clocked {
             channel1.setIndex(0);
 
             channel1.setGbFreq((nr13 | ((nr14 & 0x7) << 8)) & 0x7FF);
-            channel1.setFreq(131072 / (2048 - channel1.getGbFreq()));
+            channel1.setFreq((float)131072 / (2048 - channel1.getGbFreq()));
 
             if ((nr14 & 0x40) == 0x40) // stop output at length
             {
@@ -285,7 +285,7 @@ public class SoundController implements Component, Clocked {
                     else {
                         regs.set(NR.NR13, channel1.getGbFreq() & 0xFF);
                         regs.set(NR.NR14, (regs.get(NR.NR14) & 0xF8) | ((channel1.getGbFreq() >> 8) & 0x7));
-                        channel1.setFreq(131072 / (2048 - channel1.getGbFreq()));
+                        channel1.setFreq((float)131072 / (2048 - channel1.getGbFreq()));
                     }
                 }
             }
@@ -307,7 +307,7 @@ public class SoundController implements Component, Clocked {
             channel2.setIndex(0);
 
             int freqX = nr23 | ((nr24 & 0x7) << 8);
-            channel2.setFreq(131072 / (2048 - freqX));
+            channel2.setFreq((float)131072 / (2048 - freqX));
 
             if ((nr24 & 0x40) == 0x40) // stop output at length
             {
@@ -364,7 +364,7 @@ public class SoundController implements Component, Clocked {
             channel3.setOn((nr30 & 0x80) == 0x80);
 
             int freqX3 = nr33 | ((nr34 & 0x7) << 8);
-            channel3.setFreq(65536 / (2048 - freqX3));
+            channel3.setFreq((float)65536 / (2048 - freqX3));
 
             int[] channel3wav = new int[32];
             for (int i = 0; i < AddressMap.WAVE_RAM_END - AddressMap.WAVE_RAM_START; i++)

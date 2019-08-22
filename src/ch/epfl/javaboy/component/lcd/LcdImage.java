@@ -1,8 +1,6 @@
 package ch.epfl.javaboy.component.lcd;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Objects;
 
@@ -11,6 +9,7 @@ import java.util.Objects;
  * by the LcdController
  * @author Toufi
  */
+@SuppressWarnings("WeakerAccess")
 public final class LcdImage {
     
     /**
@@ -38,6 +37,7 @@ public final class LcdImage {
          * @param line (LcdImageLine) the line to set
          * @return (Builder) this builder
          */
+        @SuppressWarnings("UnusedReturnValue")
         Builder setLine(int y, LcdImageLine line) {
             Objects.requireNonNull(line);
             lines.set(y, line);
@@ -100,7 +100,6 @@ public final class LcdImage {
                 | (l.msb().testBit(x) ? 0b10 : 0b00);
     }
 
-    
     @Override
     public boolean equals(Object obj) {
         return obj instanceof LcdImage && lines.equals(((LcdImage)obj).lines);

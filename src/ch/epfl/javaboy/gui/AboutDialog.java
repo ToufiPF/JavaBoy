@@ -2,7 +2,6 @@ package ch.epfl.javaboy.gui;
 
 import javafx.scene.control.Alert;
 import javafx.scene.control.Label;
-import javafx.scene.text.Text;
 
 /**
  * Dialog to show when the "about" menu is clicked

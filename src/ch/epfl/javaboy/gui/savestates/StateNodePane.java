@@ -1,22 +1,18 @@
 package ch.epfl.javaboy.gui.savestates;
 
-import javafx.beans.binding.ListBinding;
 import javafx.collections.ListChangeListener;
-import javafx.collections.ObservableList;
-import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.scene.Node;
 import javafx.scene.control.ToggleGroup;
 import javafx.scene.layout.FlowPane;
 
-public class StateNodePane extends FlowPane {
+class StateNodePane extends FlowPane {
     private final ToggleGroup group;
 
-    public StateNodePane() {
+    StateNodePane() {
         super();
 
         group = new ToggleGroup();
-        setPadding(new Insets(5));
         setHgap(30);
         setVgap(25);
         setPrefWrapLength(StatesDialog.DIALOG_WIDTH);
@@ -39,7 +35,7 @@ public class StateNodePane extends FlowPane {
         });
     }
 
-    public StateNode getSelection() {
+    StateNode getSelection() {
         return (StateNode) group.getSelectedToggle();
     }
 }

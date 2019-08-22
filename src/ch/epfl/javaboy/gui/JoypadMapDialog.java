@@ -7,9 +7,7 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
 import javafx.event.Event;
-import javafx.event.EventType;
 import javafx.geometry.Pos;
-import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.ButtonType;
 import javafx.scene.control.Dialog;
@@ -29,14 +27,14 @@ import java.util.Set;
  * of the Joypad keys
  * @author Toufi
  */
-public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
+class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
     
     /**
      * Serializes the given keyMap
      * @param keyMap (Map<KeyCode, Joypad.Key>) map to serialize
      * @return (String) serialized map
      */
-    public static String serializeKeyMap(Map<KeyCode, Joypad.Key> keyMap) {
+    static String serializeKeyMap(Map<KeyCode, Joypad.Key> keyMap) {
         StringBuilder b = new StringBuilder();
         for (Map.Entry<KeyCode, Joypad.Key> e : keyMap.entrySet())
             b.append(e.getKey().toString()).append("=>")
@@ -50,7 +48,7 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
      * @param str (String) serialized keyMap
      * @return (Map<KeyCode, Joypad.Key>) keyMap
      */
-    public static Map<KeyCode, Joypad.Key> deserializeKeyMap(String str) {
+    static Map<KeyCode, Joypad.Key> deserializeKeyMap(String str) {
         Map<KeyCode, Joypad.Key> keyMap = new HashMap<>();
         String[] lines = str.split("\n");
         for (int i = 0 ; i < lines.length ; ++i) {
@@ -73,7 +71,7 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
      * Returns the default keyMap
      * @return Map<KeyCode, Joypad.Key> default keyMap
      */
-    public static Map<KeyCode, Joypad.Key> defaultKeyMap() {
+    static Map<KeyCode, Joypad.Key> defaultKeyMap() {
         Map<KeyCode, Joypad.Key> keyMap = new HashMap<>();
 
         keyMap.put(KeyCode.D, Key.RIGHT);
@@ -115,7 +113,7 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
      * with the given keyMap
      * @param keyMap (Map<KeyCode, Joypad.Key>) actual keyMap
      */
-    public JoypadMapDialog(Map<KeyCode, Joypad.Key> keyMap) {
+    JoypadMapDialog(Map<KeyCode, Joypad.Key> keyMap) {
         super();
         // Title
         setTitle("Configuration Keyboard -> Joypad");
@@ -158,7 +156,6 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         
         for (int i = 0 ; i < Joypad.Key.COUNT ; ++i) {
             final Joypad.Key id = Joypad.Key.ALL.get(i);
-            final int ordinal = i;
             Button buttonKeys = new Button();
             buttonKeys.setMinWidth(150);
             buttonKeys.setMaxWidth(200);
@@ -181,8 +178,8 @@ public class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
                 keyCodes.get(id).add(e.getCode());
             });
             
-            int col = ordinal < 4 ? 1 : 4;
-            grid.add(buttonKeys, col, ordinal % 4);
+            int col = i < 4 ? 1 : 4;
+            grid.add(buttonKeys, col, i % 4);
         }
 
         // Reset Button

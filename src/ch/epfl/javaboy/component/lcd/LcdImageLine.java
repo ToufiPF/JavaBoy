@@ -1,20 +1,22 @@
 package ch.epfl.javaboy.component.lcd;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.bits.BitVector;
 import ch.epfl.javaboy.bits.Bits;
+
+import java.util.Objects;
 
 /**
  * Represents a line of an LcdImage
  * @author Toufi
  */
+@SuppressWarnings("WeakerAccess")
 public final class LcdImageLine {
     
     /**
      * Builder for LcdImageLine
      * @author Toufi
      */
+    @SuppressWarnings("WeakerAccess")
     public static final class Builder {
         private final BitVector.Builder msb, lsb;
         
@@ -223,10 +225,8 @@ public final class LcdImageLine {
     }
     @Override
     public String toString() {
-        StringBuilder b = new StringBuilder(3 * size() + 3);
-        b.append(msb.toString()).append('\n');
-        b.append(lsb.toString()).append('\n');
-        b.append(opacity.toString());
-        return b.toString();
+        return msb.toString() + '\n' +
+                lsb.toString() + '\n' +
+                opacity.toString();
     }
 }

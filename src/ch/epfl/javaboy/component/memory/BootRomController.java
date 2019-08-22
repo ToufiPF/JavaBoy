@@ -1,11 +1,11 @@
 package ch.epfl.javaboy.component.memory;
 
-import java.util.Objects;
-
 import ch.epfl.javaboy.AddressMap;
 import ch.epfl.javaboy.bits.Bits;
 import ch.epfl.javaboy.component.Component;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
+
+import java.util.Objects;
 
 /**
  * Represents the Boot Rom controller of 

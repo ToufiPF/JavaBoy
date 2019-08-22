@@ -41,21 +41,6 @@ public final class RamController implements Component {
         end = endAddress;
     }
     
-    /**
-     * Constructs a RamController for the given RAM,
-     * accessible from startAddress (included) to
-     * the end of the RAM
-     * @param ram (Ram) linked RAM
-     * @param startAddress (int) 16 bit start address
-     * @throws NullPointerException
-     * if ram is null
-     * @throws IllegalArgumentException
-     * if the start address is invalid
-     */
-    public RamController(Ram ram, int startAddress) {
-        this(ram, startAddress, startAddress + ram.size());
-    }
-    
     @Override
     public int read(int address) {
         return isInBounds(address) ? ram.read(address - start) : NO_DATA;

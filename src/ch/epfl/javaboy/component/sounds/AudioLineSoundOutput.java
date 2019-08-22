@@ -10,7 +10,7 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class AudioLineSoundOutput implements SoundOutput {
-    public static final int SAMPLE_RATE = 44100;
+    static final int SAMPLE_RATE = 44100;
     private static final int SAMPLES_PER_FRAME = 2;
     private static final AudioFormat FORMAT = new AudioFormat(SAMPLE_RATE, Byte.SIZE, SAMPLES_PER_FRAME, true, false);
     private static final int LINE_BUFFER_SIZE = 8820;
@@ -24,8 +24,6 @@ public class AudioLineSoundOutput implements SoundOutput {
     private byte[][] buffers;
     private final ArrayList<AtomicInteger> indexes;
     private final AtomicWrappingInteger sel;
-
-    private Thread playback;
 
     public AudioLineSoundOutput() throws LineUnavailableException {
         line = AudioSystem.getSourceDataLine(FORMAT);
@@ -46,7 +44,7 @@ public class AudioLineSoundOutput implements SoundOutput {
         sel.set(0);
 
         playing = true;
-        playback = new Thread(() -> {
+        Thread playback = new Thread(() -> {
             while (playing) {
                 emptyBuffersIfFull();
             }

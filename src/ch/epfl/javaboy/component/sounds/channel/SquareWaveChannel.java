@@ -62,7 +62,7 @@ public class SquareWaveChannel extends BaseChannel {
         this.setWave(soundWavePattern[waveDuty]);
     }
 
-    public final static int[][] soundWavePattern =
+    private final static int[][] soundWavePattern =
     {
             {
                     1, 1, 1, 1,

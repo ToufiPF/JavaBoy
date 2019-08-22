@@ -29,6 +29,7 @@ public interface SoundOutput {
      * Represents a blank output that
      * does nothing.
      */
+    @SuppressWarnings("unused")
     SoundOutput NULL_OUTPUT = new SoundOutput() {
         @Override
         public void start() {

@@ -12,6 +12,7 @@ import java.io.IOException;
  * different formats
  * @author Toufi
  */
+@SuppressWarnings("WeakerAccess")
 public final class ImageConverter {
 
     private static final int[] COLOR_MAP = {

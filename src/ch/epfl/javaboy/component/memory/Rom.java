@@ -36,5 +36,5 @@ public final class Rom {
      */
     public int read(int index) {
         return Byte.toUnsignedInt(data[index]);
-    };
+    }
 }

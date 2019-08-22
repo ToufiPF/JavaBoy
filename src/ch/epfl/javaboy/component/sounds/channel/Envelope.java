@@ -5,6 +5,7 @@ package ch.epfl.javaboy.component.sounds.channel;
  * a subcomponent of a Channel
  * @author Bryan Johnson (https://github.com/bryanjjohnson/Java-Gameboy-Emulator)
  */
+@SuppressWarnings("WeakerAccess")
 public class Envelope {
     private int base;
     private boolean increment;
@@ -47,9 +48,9 @@ public class Envelope {
             {
                 index = stepLength;
 
-                if (increment && base < 0xF) {
+                if (isIncrementing() && base < 0xF) {
                     ++base;
-                } else if (!increment && base > 0) {
+                } else if (!isIncrementing() && base > 0) {
                     --base;
                 }
             }

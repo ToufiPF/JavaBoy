@@ -1,15 +1,14 @@
 package ch.epfl.javaboy.component.cartridge;
 
+import ch.epfl.javaboy.Preconditions;
+import ch.epfl.javaboy.component.Component;
+import ch.epfl.javaboy.component.memory.Rom;
+
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-
-import ch.epfl.javaboy.Preconditions;
-import ch.epfl.javaboy.component.Component;
-import ch.epfl.javaboy.component.memory.Rom;
 
 /**
  * Represents a GameBoy cartridge

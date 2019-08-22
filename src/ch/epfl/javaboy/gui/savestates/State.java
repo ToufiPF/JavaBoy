@@ -11,10 +11,11 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+@SuppressWarnings({"unused", "WeakerAccess"})
 public final class State {
     private static final DateTimeFormatter DATE_TIME_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
-    static void saveState(String pathAndStateName, State state) throws IOException {
+    public static void saveState(String pathAndStateName, State state) throws IOException {
         {
             File metadataFile = new File(pathAndStateName + ".meta");
             FileOutputStream os = new FileOutputStream(metadataFile);
@@ -38,14 +39,14 @@ public final class State {
             os.write(state.gbState);
         }
     }
-    static State loadState(String pathAndStateName) throws IOException {
+    public static State loadState(String pathAndStateName) throws IOException {
         Metadata meta = loadMetadata(pathAndStateName);
         byte[] data = loadData(pathAndStateName);
         return new State(meta, data);
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    static Metadata loadMetadata(String pathAndStateName) throws IOException {
+    public static Metadata loadMetadata(String pathAndStateName) throws IOException {
         File metadataFile = new File(pathAndStateName + ".meta");
         FileInputStream is  = new FileInputStream(metadataFile);
 
@@ -63,7 +64,7 @@ public final class State {
         is.read(buff);
         return new Metadata(ldt, ImageConverter.fromByteArray(buff, width, height));
     }
-    static byte[] loadData(String pathAndStateName) throws IOException {
+    public static byte[] loadData(String pathAndStateName) throws IOException {
         File stateFile = new File(pathAndStateName + ".dat");
         FileInputStream is = new FileInputStream(stateFile);
         return is.readAllBytes();
@@ -92,7 +93,7 @@ public final class State {
         metadata = new Metadata(dateAndTime, screenshot);
         this.gbState = gbState;
     }
-    private State(Metadata meta, byte[] gbState) {
+    State(Metadata meta, byte[] gbState) {
         this.metadata = meta;
         this.gbState = gbState;
     }

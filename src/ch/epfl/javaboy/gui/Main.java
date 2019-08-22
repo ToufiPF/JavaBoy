@@ -5,6 +5,8 @@ import ch.epfl.javaboy.component.Joypad;
 import ch.epfl.javaboy.component.cartridge.Cartridge;
 import ch.epfl.javaboy.component.lcd.ImageConverter;
 import ch.epfl.javaboy.component.lcd.LcdController;
+import ch.epfl.javaboy.gui.options.General;
+import ch.epfl.javaboy.gui.options.Sound;
 import ch.epfl.javaboy.gui.savestates.State;
 import ch.epfl.javaboy.gui.savestates.StatesDialog;
 import javafx.animation.AnimationTimer;
@@ -38,7 +40,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static ch.epfl.javaboy.gui.Options.*;
+import static ch.epfl.javaboy.gui.options.Option.*;
 
 /**
  * The Main class of the JavaBoy emulator.
@@ -99,7 +101,7 @@ public final class Main extends Application {
         createSceneRootView();
         createMenuBar();
 
-        reloadRomsInActivePath();
+        refreshRomsInActivePath();
     }
 
     @Override
@@ -224,7 +226,7 @@ public final class Main extends Application {
                     romsPath = romsFolder.getPath();
                 if (!(romsPath.endsWith("/") || romsPath.endsWith("\\")))
                     romsPath += '/';
-                reloadRomsInActivePath();
+                refreshRomsInActivePath();
                 saveOptions();
             });
 
@@ -332,10 +334,13 @@ public final class Main extends Application {
         File options = new File(OPTIONS_FILE_PATH + OPTIONS_FILE_NAME);
         try (Writer writer = new FileWriter(options)) {
             // General
-            writer.write(GENERAL_TAG + '\n');
-            writer.write(ROMS_PATH_TAG + romsPath + '\n');
-            writer.write(LAST_PLAYED_ROM_TAG + lastPlayedRom + '\n');
-            writer.write(AUTO_LOAD_TAG + autoLoadWhenLaunchingRom + '\n');
+            writer.write(General.TAG + '\n');
+            writer.write(General.ROMS_PATH.tag() + romsPath + '\n');
+            writer.write(General.LAST_PLAYED_ROM.tag() + lastPlayedRom + '\n');
+            writer.write(General.AUTO_LOAD.tag() + autoLoadWhenLaunchingRom + '\n');
+
+            //Sound Options
+            writer.write(Sound.TAG + '\n');
 
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -349,10 +354,10 @@ public final class Main extends Application {
             String line, lastTag = null;
             LinkedList<String> content = new LinkedList<>();
             while ((line = reader.readLine()) != null) {
-                if (line.trim().equals(GENERAL_TAG)) {
+                if (line.trim().equals(General.TAG)) {
                     if (lastTag != null)
                         loadOption(lastTag, content);
-                    lastTag = GENERAL_TAG;
+                    lastTag = General.TAG;
                     content.clear();
                 } else if (!line.startsWith("#")) {
                     content.add(line);
@@ -371,17 +376,17 @@ public final class Main extends Application {
     }
     private void loadOption(String optionTag, List<String> content) {
         switch (optionTag) {
-            case GENERAL_TAG:
+            case General.TAG:
                 for (String line : content) {
-                    if (line.startsWith(ROMS_PATH_TAG))
-                        romsPath = line.substring(ROMS_PATH_TAG.length()).trim();
-                    else if (line.startsWith(LAST_PLAYED_ROM_TAG))
-                        lastPlayedRom = line.substring(LAST_PLAYED_ROM_TAG.length()).trim();
-                    else if (line.startsWith(AUTO_LOAD_TAG))
-                        autoLoadWhenLaunchingRom = Boolean.parseBoolean(line.substring(AUTO_LOAD_TAG.length()).trim());
+                    if (line.startsWith(General.ROMS_PATH.tag()))
+                        romsPath = line.substring(General.ROMS_PATH.tag().length()).trim();
+                    else if (line.startsWith(General.LAST_PLAYED_ROM.tag()))
+                        lastPlayedRom = line.substring(General.LAST_PLAYED_ROM.tag().length()).trim();
+                    else if (line.startsWith(General.AUTO_LOAD.tag()))
+                        autoLoadWhenLaunchingRom = Boolean.parseBoolean(line.substring(General.AUTO_LOAD.tag().length()).trim());
                 }
                 break;
-            case SOUND_TAG:
+            case Sound.TAG:
                 break;
             default:
                 throw new IllegalArgumentException();
@@ -389,9 +394,9 @@ public final class Main extends Application {
     }
     private void setOptionsToDefault() {
         // General
-        romsPath = DEFAULT_ROMS_PATH;
-        lastPlayedRom = "";
-        autoLoadWhenLaunchingRom = false;
+        romsPath = General.ROMS_PATH.defaultString();
+        lastPlayedRom = General.LAST_PLAYED_ROM.defaultString();
+        autoLoadWhenLaunchingRom = Boolean.parseBoolean(General.AUTO_LOAD.defaultString());
     }
 
     private void saveKeyMap() {
@@ -422,7 +427,7 @@ public final class Main extends Application {
         keysMap = JoypadMapDialog.defaultKeyMap();
     }
 
-    private void reloadRomsInActivePath() {
+    private void refreshRomsInActivePath() {
         romsList.clear();
         if (romsPath == null)
             return;

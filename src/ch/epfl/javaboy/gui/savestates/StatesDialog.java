@@ -39,7 +39,7 @@ public final class StatesDialog {
     private static final int REGULAR_SAVE_SLOTS = 10;
     private static final int SPECIAL_SAVE_SLOTS = 2;
 
-    public final static int DIALOG_WIDTH = 2 * StateNode.WIDTH + 70;
+    public final static int DIALOG_WIDTH = 2 * StateNode.WIDTH + 50;
     public final static int DIALOG_HEIGHT = 3 * StateNode.HEIGTH;
 
     private static String statesPathForRom(String romName) {
