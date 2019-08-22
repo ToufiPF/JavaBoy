@@ -145,7 +145,6 @@ public final class GameBoy {
         return simulatedCycles;
     }
 
-
     public byte[] saveState() throws IOException {
         byte[] buffer;
         ByteArrayOutputStream os = new ByteArrayOutputStream();
@@ -190,7 +189,7 @@ public final class GameBoy {
         return os.toByteArray();
     }
     @SuppressWarnings("ResultOfMethodCallIgnored")
-    public void loadState(byte[] state, LcdImage screen) throws IOException {
+    public void loadState(byte[] state) throws IOException {
         soundController.stopAudio();
         ByteArrayInputStream is = new ByteArrayInputStream(state);
 
@@ -244,6 +243,5 @@ public final class GameBoy {
             simulatedCycles |= Byte.toUnsignedLong(buffState[i]) << (i * Byte.SIZE);
 
         soundController.startAudio();
-        lcd.setCurrentImage(screen);
     }
 }

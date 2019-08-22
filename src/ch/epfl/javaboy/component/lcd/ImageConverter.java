@@ -65,6 +65,10 @@ public final class ImageConverter {
      * @return (LcdImage) the rebuilt image
      */
     public static LcdImage fromByteArray(byte[] array, int width, int height) {
+        return builderFromByteArray(array, width, height).build();
+    }
+
+    public static LcdImage.Builder builderFromByteArray(byte[] array, int width, int height) {
         LcdImage.Builder builder = new LcdImage.Builder(width, height);
         final int bytesInLine = width / Byte.SIZE;
 
@@ -73,18 +77,16 @@ public final class ImageConverter {
         int from = 0;
         for (int y = 0 ; y < height ; ++y) {
             LcdImageLine.Builder b = new LcdImageLine.Builder(width);
-            for (int i = 0 ; i < bytesInLine ; ++i)
-                msbs[i] = array[from + i];
+            System.arraycopy(array, from, msbs, 0, bytesInLine);
             from += bytesInLine;
-            for (int i = 0 ; i < bytesInLine ; ++i)
-                lsbs[i] = array[from + i];
+            System.arraycopy(array, from, lsbs, 0, bytesInLine);
             from += bytesInLine;
 
             for (int i = 0 ; i < bytesInLine ; ++i)
                 b.setBytes(i, Byte.toUnsignedInt(msbs[i]), Byte.toUnsignedInt(lsbs[i]));
             builder.setLine(y, b.build());
         }
-        return builder.build();
+        return builder;
     }
 
     private ImageConverter() {

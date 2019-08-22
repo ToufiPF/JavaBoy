@@ -1,6 +1,10 @@
 package ch.epfl.javaboy.component.lcd;
 
-import ch.epfl.javaboy.*;
+import ch.epfl.javaboy.AddressMap;
+import ch.epfl.javaboy.Bus;
+import ch.epfl.javaboy.Preconditions;
+import ch.epfl.javaboy.Register;
+import ch.epfl.javaboy.RegisterFile;
 import ch.epfl.javaboy.bits.Bit;
 import ch.epfl.javaboy.bits.BitVector;
 import ch.epfl.javaboy.bits.Bits;
@@ -10,6 +14,7 @@ import ch.epfl.javaboy.component.cpu.Cpu;
 import ch.epfl.javaboy.component.cpu.Cpu.Interrupt;
 import ch.epfl.javaboy.component.memory.Ram;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -59,9 +64,9 @@ public final class LcdController implements Component, Clocked {
     public static final int LCD_WIDTH = 160;
     public static final int LCD_HEIGHT = 144;
 
-    public static final LcdImage BLANK_IMAGE =
+    private static final LcdImage BLANK_IMAGE =
             new LcdImage.Builder(LCD_WIDTH, LCD_HEIGHT).build();
-    public static final LcdImageLine BLANK_LINE =
+    private static final LcdImageLine BLANK_LINE =
             new LcdImageLine.Builder(LCD_WIDTH).build();
 
     private static final int TILE_SIZE = 8;
@@ -81,8 +86,9 @@ public final class LcdController implements Component, Clocked {
     
     private static final int MAX_SPRITES_PER_LINE = 10;
 
+    private static final int IMAGE_SIZE = (LCD_WIDTH / Byte.SIZE * LCD_HEIGHT) * 2;
     private static final int STATE_LENGTH = AddressMap.OAM_RAM_SIZE + AddressMap.VIDEO_RAM_SIZE
-            + Reg.ALL.size() + Long.BYTES + 2 * Integer.BYTES + 1;
+            + Reg.ALL.size() + Long.BYTES + 2 * Integer.BYTES + 1 + IMAGE_SIZE;
 
     private final RegisterFile<Reg> vregs;
     private final Ram vRam, oamRam;
@@ -130,10 +136,6 @@ public final class LcdController implements Component, Clocked {
      */
     public LcdImage currentImage() {
         return current;
-    }
-
-    public void setCurrentImage(LcdImage img) {
-        current = img;
     }
     
     @Override
@@ -199,7 +201,16 @@ public final class LcdController implements Component, Clocked {
 
         for (int i = 0 ; i < Reg.ALL.size() ; ++i)
             state[baseIndex + i] = (byte) vregs.get(Reg.ALL.get(i));
+        baseIndex += Reg.ALL.size();
 
+        byte[] img;
+        try {
+            img = ImageConverter.toByteArray(nextImageBuilder.build());
+        } catch (IOException e) {
+            img = new byte[IMAGE_SIZE];
+            e.printStackTrace();
+        }
+        System.arraycopy(img, 0, state, baseIndex, IMAGE_SIZE);
         return state;
     }
 
@@ -235,6 +246,10 @@ public final class LcdController implements Component, Clocked {
 
         for (int i = 0 ; i < Reg.ALL.size() ; ++i)
             vregs.set(Reg.ALL.get(i), Byte.toUnsignedInt(state[baseIndex + i]));
+        baseIndex += Reg.ALL.size();
+
+        byte[] img = Arrays.copyOfRange(state, baseIndex, baseIndex + IMAGE_SIZE);
+        nextImageBuilder = ImageConverter.builderFromByteArray(img, LCD_WIDTH, LCD_HEIGHT);
 
         current = BLANK_IMAGE;
     }

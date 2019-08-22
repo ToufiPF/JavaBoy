@@ -130,7 +130,7 @@ public final class Main extends Application {
     private void launchRom(String name) {
         File romFile = new File(romsPath + name);
         if (!romFile.exists()) {
-            System.err.println("Last rom used not found.\n" + "Path : " + romsPath + name);
+            System.err.println("Error : Rom not found.\n" + "Path : " + romsPath + name);
             return;
         }
 
@@ -152,7 +152,7 @@ public final class Main extends Application {
         if (autoLoadWhenLaunchingRom && statesDial.autoSaveFilesExist()) {
             try {
                 State auto = statesDial.autoLoad();
-                gb.loadState(auto.getGbState(), auto.getScreenshot());
+                gb.loadState(auto.getGbState());
                 actualizeAnimationTimer();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -236,7 +236,7 @@ public final class Main extends Application {
                     String loadName = result.get();
                     try {
                         State st = statesDial.load(loadName);
-                        gb.loadState(st.getGbState(), st.getScreenshot());
+                        gb.loadState(st.getGbState());
                         actualizeAnimationTimer();
                     } catch (IOException ex) {
                         ex.printStackTrace();
@@ -263,7 +263,7 @@ public final class Main extends Application {
             quickLoad.setOnAction(e -> {
                 try {
                     State state = statesDial.quickLoad();
-                    gb.loadState(state.getGbState(), state.getScreenshot());
+                    gb.loadState(state.getGbState());
                     actualizeAnimationTimer();
                 } catch (IOException ex) {
                     ex.printStackTrace();
