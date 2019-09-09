@@ -38,6 +38,7 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static ch.epfl.javaboy.gui.options.Option.*;
 
@@ -81,6 +82,7 @@ public final class Main extends Application {
 
     private GameBoy gb;
     private AnimationTimer timer;
+    private final AtomicBoolean paused;
 
     public Main() {
         primaryStage = null;
@@ -94,6 +96,7 @@ public final class Main extends Application {
 
         gb = null;
         timer = null;
+        paused = new AtomicBoolean(false);
 
         loadOptions();
         loadKeyMap();
@@ -101,7 +104,7 @@ public final class Main extends Application {
         statesDial.setRomName(lastPlayedRom);
 
         createSceneRootView();
-        createMenuBar();
+        createToolBar();
 
         refreshRomsInActivePath();
     }
@@ -138,12 +141,12 @@ public final class Main extends Application {
             return;
         }
 
-        //Stopping last GameBoy if needed
-        if (gb != null) {
-            timer.stop();
-            gb.soundController().stopAudio();
-        }
         try {
+            //Stopping last GameBoy if needed
+            if (gb != null) {
+                timer.stop();
+                gb.soundController().stopAudio();
+            }
             gb = new GameBoy(Cartridge.ofFile(romFile));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -168,6 +171,8 @@ public final class Main extends Application {
         return new AnimationTimer() {
             @Override
             public void handle(long now) {
+                if (paused.get())
+                    return;
                 long elapsed = now - startTime;
                 long cycles = (long) (elapsed * GameBoy.CYCLES_PER_NANO_SECOND);
                 gameBoy.runUntil(cycles);
@@ -200,7 +205,7 @@ public final class Main extends Application {
         root = new BorderPane(view);
         scene =  new Scene(root);
     }
-    private void createMenuBar() {
+    private void createToolBar() {
         ToolBar toolBar = new ToolBar();
         // File Menu
         {
@@ -256,21 +261,24 @@ public final class Main extends Application {
             regLoad = new Button("Load");
             scene.addMnemonic(new Mnemonic(regLoad, new KeyCodeCombination(KeyCode.F7)));
             regLoad.setOnAction(e -> {
+                setPaused(true);
                 Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.LOADING);
                 if (result.isPresent()) {
                     String loadName = result.get();
                     try {
                         State st = statesDial.load(loadName);
                         gb.loadState(st.getGbState());
-                        actualizeAnimationTimer();
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
                 }
+                setPaused(false);
+                actualizeAnimationTimer();
             });
             regSave = new Button("Save");
             scene.addMnemonic(new Mnemonic(regSave, new KeyCodeCombination(KeyCode.F8)));
             regSave.setOnAction(e -> {
+                setPaused(true);
                 Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.SAVING);
                 if (result.isPresent()) {
                     String saveName = result.get();
@@ -281,6 +289,8 @@ public final class Main extends Application {
                         ex.printStackTrace();
                     }
                 }
+                setPaused(false);
+                actualizeAnimationTimer();
             });
 
             toolBar.getItems().addAll(qckLoad, qckSave, regLoad, regSave);
@@ -323,6 +333,15 @@ public final class Main extends Application {
         */
 
         root.setTop(toolBar);
+    }
+
+    private void setPaused(boolean pause) {
+        paused.set(pause);
+        if (pause) {
+            gb.soundController().stopAudio();
+        } else {
+            gb.soundController().startAudio();
+        }
     }
 
     private void saveOptions() {
