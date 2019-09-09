@@ -201,5 +201,4 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             return keyMap;
         });
     }
-
 }
