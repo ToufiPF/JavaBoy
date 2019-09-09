@@ -12,21 +12,20 @@ import ch.epfl.javaboy.gui.savestates.StatesDialog;
 import javafx.animation.AnimationTimer;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
-import javafx.collections.ListChangeListener;
 import javafx.collections.ObservableList;
+import javafx.geometry.Orientation;
 import javafx.scene.Scene;
+import javafx.scene.control.Button;
 import javafx.scene.control.CheckMenuItem;
-import javafx.scene.control.Menu;
-import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
-import javafx.scene.control.SeparatorMenuItem;
+import javafx.scene.control.Separator;
+import javafx.scene.control.ToolBar;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.Mnemonic;
 import javafx.scene.layout.BorderPane;
-import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import javafx.stage.WindowEvent;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -66,7 +65,10 @@ public final class Main extends Application {
     private Scene scene;
     private Stage primaryStage;
 
-    private MenuItem quickLoad;
+    @SuppressWarnings("FieldCanBeLocal")
+    private Button qckLoad, qckSave;
+    @SuppressWarnings("FieldCanBeLocal")
+    private Button regLoad, regSave;
 
     private final StatesDialog statesDial;
 
@@ -150,7 +152,7 @@ public final class Main extends Application {
         timer.start();
         statesDial.setRomName(name);
 
-        quickLoad.setDisable(!statesDial.quickSaveFilesExist());
+        qckLoad.setDisable(!statesDial.quickSaveFilesExist());
         if (autoLoadWhenLaunchingRom && statesDial.autoSaveFilesExist()) {
             try {
                 State auto = statesDial.autoLoad();
@@ -196,14 +198,13 @@ public final class Main extends Application {
         });
 
         root = new BorderPane(view);
-
         scene =  new Scene(root);
     }
     private void createMenuBar() {
-        MenuBar menuBar = new MenuBar();
+        ToolBar toolBar = new ToolBar();
         // File Menu
         {
-            Menu fileMenu = new Menu("File");
+            /*
             Menu romLoad = new Menu("Choose Rom");
             romsList.addListener((ListChangeListener<? super String>) (change) -> {
                 romLoad.getItems().clear();
@@ -229,10 +230,32 @@ public final class Main extends Application {
                 refreshRomsInActivePath();
                 saveOptions();
             });
+            */
+            qckLoad = new Button("QuickLoad");
+            scene.addMnemonic(new Mnemonic(qckLoad, new KeyCodeCombination(KeyCode.F5)));
+            qckLoad.setOnAction(e -> {
+                try {
+                    State state = statesDial.quickLoad();
+                    gb.loadState(state.getGbState());
+                    actualizeAnimationTimer();
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
+            qckSave = new Button("QuickSave");
+            scene.addMnemonic(new Mnemonic(qckSave, new KeyCodeCombination(KeyCode.F6)));
+            qckSave.setOnAction(e -> {
+                try {
+                    statesDial.quickSave(gb);
+                    qckLoad.setDisable(false);
+                } catch (IOException ex) {
+                    ex.printStackTrace();
+                }
+            });
 
-            MenuItem load = new MenuItem("Load");
-            load.setAccelerator(new KeyCodeCombination(KeyCode.F7));
-            load.setOnAction(e -> {
+            regLoad = new Button("Load");
+            scene.addMnemonic(new Mnemonic(regLoad, new KeyCodeCombination(KeyCode.F7)));
+            regLoad.setOnAction(e -> {
                 Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.LOADING);
                 if (result.isPresent()) {
                     String loadName = result.get();
@@ -245,56 +268,28 @@ public final class Main extends Application {
                     }
                 }
             });
-            MenuItem save = new MenuItem("Save");
-            save.setAccelerator(new KeyCodeCombination(KeyCode.F8));
-            save.setOnAction(e -> {
+            regSave = new Button("Save");
+            scene.addMnemonic(new Mnemonic(regSave, new KeyCodeCombination(KeyCode.F8)));
+            regSave.setOnAction(e -> {
                 Optional<String> result = statesDial.showAndWait(StatesDialog.Mode.SAVING);
                 if (result.isPresent()) {
                     String saveName = result.get();
                     try {
                         statesDial.save(saveName, gb);
-                        quickLoad.setDisable(!statesDial.quickSaveFilesExist());
+                        qckLoad.setDisable(!statesDial.quickSaveFilesExist());
                     } catch (IOException ex) {
                         ex.printStackTrace();
                     }
                 }
             });
 
-            quickLoad = new MenuItem("QuickLoad");
-            quickLoad.setAccelerator(new KeyCodeCombination(KeyCode.F5));
-            quickLoad.setOnAction(e -> {
-                try {
-                    State state = statesDial.quickLoad();
-                    gb.loadState(state.getGbState());
-                    actualizeAnimationTimer();
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            });
-            MenuItem quickSave = new MenuItem("QuickSave");
-            quickSave.setAccelerator(new KeyCodeCombination(KeyCode.F6));
-            quickSave.setOnAction(e -> {
-                try {
-                    statesDial.quickSave(gb);
-                    quickLoad.setDisable(false);
-                } catch (IOException ex) {
-                    ex.printStackTrace();
-                }
-            });
-
-            MenuItem quit = new MenuItem("Quit");
-            quit.setOnAction(e -> primaryStage.fireEvent(
-                    new WindowEvent(primaryStage, WindowEvent.WINDOW_CLOSE_REQUEST)));
-
-            fileMenu.getItems().addAll(romLoad, romPath, new SeparatorMenuItem(),
-                    save, load, quickSave, quickLoad, new SeparatorMenuItem(), quit);
-
-            menuBar.getMenus().add(fileMenu);
+            toolBar.getItems().addAll(qckLoad, qckSave, regLoad, regSave);
         }
+        toolBar.getItems().add(new Separator(Orientation.VERTICAL));
 
         // Options Menu
         {
-            Menu optionsMenu = new Menu("Options");
+            Button optionsMenu = new Button("Options");
             MenuItem controls = new MenuItem("Controls");
             controls.setOnAction(e -> {
                 JoypadMapDialog dial = new JoypadMapDialog(keysMap);
@@ -309,11 +304,10 @@ public final class Main extends Application {
                 saveOptions();
             });
 
-            optionsMenu.getItems().addAll(controls, autoLoad);
-
-            menuBar.getMenus().add(optionsMenu);
+            toolBar.getItems().add(optionsMenu);
         }
 
+        /*
         // Help Menu
         {
             Menu helpMenu = new Menu("Help");
@@ -324,10 +318,11 @@ public final class Main extends Application {
             });
             helpMenu.getItems().addAll(about);
 
-            menuBar.getMenus().add(helpMenu);
+            toolBar.getMenus().add(helpMenu);
         }
+        */
 
-        root.setTop(menuBar);
+        root.setTop(toolBar);
     }
 
     private void saveOptions() {
