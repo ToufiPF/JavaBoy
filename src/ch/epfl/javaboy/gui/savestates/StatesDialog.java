@@ -271,7 +271,6 @@ public final class StatesDialog {
         txt.setOnMouseClicked(e -> {
             System.out.println("New Save request n°" + regularNodes.size());
             dialog.setResult(REGULAR_STATE + regularNodes.size());
-            dialog.close();
         });
         lay.getChildren().add(txt);
         return lay;
@@ -307,7 +306,6 @@ public final class StatesDialog {
                 content.getChildren().add(regularNode);
             if (regularNodes.size() < REGULAR_SAVE_SLOTS)
                 content.getChildren().add(newSaveNode);
-
         } else {
             dialog.setTitle("Load State");
 
