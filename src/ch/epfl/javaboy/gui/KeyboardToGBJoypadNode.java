@@ -7,10 +7,10 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableMap;
 import javafx.collections.ObservableSet;
 import javafx.event.Event;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
@@ -21,13 +21,14 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Dialog to show when the "Controls" menu is clicked.
- * Use Dialog<>.getResult() to get the map after the modifications
+ * KeyboardToGBJoypadNode
+ * Node to use when asking the user to enter custom
+ * key mapping (keyboard supported)
  * Also contains various utilities linked to the mapping
  * of the Joypad keys
  * @author Toufi
  */
-class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
+class KeyboardToGBJoypadNode extends Parent {
     
     /**
      * Serializes the given keyMap
@@ -41,7 +42,6 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             .append(e.getValue().toString()).append('\n');
         return b.toString();
     }
-    
     /**
      * Deserialize the given String and
      * returns the corresponding keyMap
@@ -66,7 +66,6 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         }
         return keyMap;
     }
-    
     /**
      * Returns the default keyMap
      * @return Map<KeyCode, Joypad.Key> default keyMap
@@ -96,7 +95,6 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         }
         return keysMap;
     }
-
     private static ObservableMap<Joypad.Key, ObservableSet<KeyCode>> toKeyCodes(Map<KeyCode, Joypad.Key> keysMap) {
         ObservableMap<Joypad.Key, ObservableSet<KeyCode>> keyCodes = FXCollections.observableMap(new HashMap<>());
         for (Map.Entry<KeyCode, Joypad.Key> e : keysMap.entrySet()) {
@@ -107,21 +105,15 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
         }
         return keyCodes;
     }
-    
+
+    private final ObservableMap<Joypad.Key, ObservableSet<KeyCode>> keyCodes;
     /**
      * Constructs a new JoypadMapDialog,
      * with the given keyMap
      * @param keyMap (Map<KeyCode, Joypad.Key>) actual keyMap
      */
-    JoypadMapDialog(Map<KeyCode, Joypad.Key> keyMap) {
+    KeyboardToGBJoypadNode(Map<KeyCode, Joypad.Key> keyMap) {
         super();
-        // Title
-        setTitle("Configuration Keyboard -> Joypad");
-
-        // Set Buttons
-        getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-        getDialogPane().setMinSize(550, 350);
-        getDialogPane().setMaxSize(550, 350);
 
         // Grid
         GridPane grid = new GridPane();
@@ -152,7 +144,7 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             grid.add(start, 3, 3);
         }
 
-        final ObservableMap<Joypad.Key, ObservableSet<KeyCode>> keyCodes = toKeyCodes(keyMap);
+        keyCodes = toKeyCodes(keyMap);
         
         for (int i = 0 ; i < Joypad.Key.COUNT ; ++i) {
             final Joypad.Key id = Joypad.Key.ALL.get(i);
@@ -170,12 +162,12 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             });
             buttonKeys.addEventFilter(KeyEvent.KEY_PRESSED, Event::consume);
             buttonKeys.addEventFilter(KeyEvent.KEY_RELEASED, e -> {
-                e.consume();
                 for (Set<KeyCode> set : keyCodes.values())
                     if (set.contains(e.getCode()))
                         return;
 
                 keyCodes.get(id).add(e.getCode());
+                e.consume();
             });
             
             int col = i < 4 ? 1 : 4;
@@ -192,13 +184,11 @@ class JoypadMapDialog extends Dialog<Map<KeyCode, Joypad.Key>> {
             }
         });
         grid.add(resetDefault, 2, 5);
-        
-        getDialogPane().setContent(grid);
+        grid.setPadding(new Insets(5));
+        getChildren().add(grid);
+    }
 
-        setResultConverter(btn -> {
-            if (btn.equals(ButtonType.OK))
-                return toKeyMap(keyCodes);
-            return keyMap;
-        });
+    Map<KeyCode, Joypad.Key> getResult() {
+        return toKeyMap(keyCodes);
     }
 }

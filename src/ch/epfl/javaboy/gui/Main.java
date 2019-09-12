@@ -14,8 +14,6 @@ import javafx.application.Application;
 import javafx.geometry.Orientation;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
-import javafx.scene.control.CheckMenuItem;
-import javafx.scene.control.MenuItem;
 import javafx.scene.control.Separator;
 import javafx.scene.control.ToolBar;
 import javafx.scene.image.ImageView;
@@ -75,16 +73,19 @@ public final class Main extends Application {
     @SuppressWarnings("FieldCanBeLocal")
     private Button regLoad, regSave;
 
+    private final OptionsDialog optionsDial;
     private final StatesDialog statesDial;
 
     private File lastPlayedRom;
 
-    private Map<KeyCode, Joypad.Key> keysMap;
-    private boolean autoLoadWhenLaunchingRom;
-
     private GameBoy gb;
     private AnimationTimer timer;
     private final AtomicBoolean paused;
+
+    // Options
+    Map<KeyCode, Joypad.Key> keysMap;
+    boolean autoLoadWhenLaunchingRom;
+
 
     public Main() {
         primaryStage = null;
@@ -99,6 +100,8 @@ public final class Main extends Application {
 
         loadOptions();
         loadKeyMap();
+
+        optionsDial = new OptionsDialog(this);
         statesDial = new StatesDialog();
         statesDial.setRomName(getRomNameFromPath(lastPlayedRom));
 
@@ -191,10 +194,12 @@ public final class Main extends Application {
         view.setOnKeyPressed(e -> {
             if (keysMap.containsKey(e.getCode()))
                 gb.joypad().keyPressed(keysMap.get(e.getCode()));
+            e.consume();
         });
         view.setOnKeyReleased(e -> {
             if (keysMap.containsKey(e.getCode()))
                 gb.joypad().keyReleased(keysMap.get(e.getCode()));
+            e.consume();
         });
 
         root = new BorderPane(view);
@@ -257,7 +262,6 @@ public final class Main extends Application {
                     }
                 }
                 setPaused(false);
-                actualizeAnimationTimer();
                 view.requestFocus();
             });
             regSave = new Button("Save");
@@ -275,7 +279,6 @@ public final class Main extends Application {
                     }
                 }
                 setPaused(false);
-                actualizeAnimationTimer();
                 view.requestFocus();
             });
 
@@ -287,42 +290,17 @@ public final class Main extends Application {
 
         // Options Menu
         {
-            Button optionsMenu = new Button("Options");
-            optionsMenu.setOnAction(e -> {
-
+            Button options = new Button("Options");
+            options.setOnAction(e -> {
+                setPaused(true);
+                optionsDial.showAndWait();
+                saveOptions();
+                setPaused(false);
                 view.requestFocus();
             });
-            MenuItem controls = new MenuItem("Controls");
-            controls.setOnAction(e -> {
-                JoypadMapDialog dial = new JoypadMapDialog(keysMap);
-                dial.showAndWait();
-                keysMap = dial.getResult();
-                saveKeyMap();
-            });
-            CheckMenuItem autoLoad = new CheckMenuItem("Auto Load when starting Rom");
-            autoLoad.setSelected(autoLoadWhenLaunchingRom);
-            autoLoad.selectedProperty().addListener((obs, oldV, newV) -> {
-                autoLoadWhenLaunchingRom = newV;
-                saveOptions();
-            });
 
-            toolBar.getItems().add(optionsMenu);
+            toolBar.getItems().add(options);
         }
-
-        /*
-        // Help Menu
-        {
-            Menu helpMenu = new Menu("Help");
-            MenuItem about = new MenuItem("About");
-            about.setOnAction(e -> {
-                AboutDialog dial = new AboutDialog();
-                dial.showAndWait();
-            });
-            helpMenu.getItems().addAll(about);
-
-            toolBar.getMenus().add(helpMenu);
-        }
-        */
 
         root.setTop(toolBar);
     }
@@ -333,6 +311,7 @@ public final class Main extends Application {
             gb.soundController().stopAudio();
         } else {
             gb.soundController().startAudio();
+            actualizeAnimationTimer();
         }
     }
 
@@ -406,7 +385,7 @@ public final class Main extends Application {
     private void saveKeyMap() {
         File file = new File(KEYMAP_FILE_PATH + KEYMAP_FILE_NAME);
         try (Writer writer = new FileWriter(file)) {
-            String str = JoypadMapDialog.serializeKeyMap(keysMap);
+            String str = KeyboardToGBJoypadNode.serializeKeyMap(keysMap);
             writer.write(str);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
@@ -420,7 +399,7 @@ public final class Main extends Application {
             int read;
             while ((read = reader.read(buffer)) != -1)
                 b.append(buffer, 0, read);
-            keysMap = JoypadMapDialog.deserializeKeyMap(b.toString());
+            keysMap = KeyboardToGBJoypadNode.deserializeKeyMap(b.toString());
         } catch (IOException e) {
             setKeyMapToDefault();
             saveKeyMap();
@@ -428,6 +407,6 @@ public final class Main extends Application {
         }
     }
     private void setKeyMapToDefault() {
-        keysMap = JoypadMapDialog.defaultKeyMap();
+        keysMap = KeyboardToGBJoypadNode.defaultKeyMap();
     }
 }
